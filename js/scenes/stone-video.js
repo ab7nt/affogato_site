@@ -56,6 +56,10 @@ Affogato.Scenes.createStoneVideo = function (cfg) {
       endedCallback = callback;
     },
 
+    getVideoElement: function () {
+      return video;
+    },
+
     resize: function () {},
 
     hide: function () {

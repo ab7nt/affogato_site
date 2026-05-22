@@ -155,9 +155,9 @@ Affogato.UnderwaterBg = (function () {
   // Перерисовывает подводный фон в ctx (w×h — размер canvas в px).
   // depth 0..1 — положение сцены в череде песен (0 — первая, 1 — последняя):
   // верхний свет с ним гаснет, нижний (фонарик) — разгорается.
-  function render(ctx, w, h, depth) {
+  function render(ctx, w, h, depth, timeScale) {
     var cfg = Affogato.Config.underwater;
-    var t = performance.now() / 1000;
+    var t = (performance.now() / 1000) * (timeScale || 1);
     var d = clamp01(depth || 0);
 
     if (!particles) particles = buildParticles(cfg.particles.count);

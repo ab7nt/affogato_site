@@ -14,8 +14,8 @@
   <canvas id="stage"></canvas>
 
   <nav id="top-nav" class="top-nav" aria-label="Основная навигация">
-    <a href="https://band.link/affogato" target="_blank" rel="noopener noreferrer">слушать</a>
-    <a href="mailto:affogato.sound@gmail.com">связаться</a>
+    <a href="https://band.link/affogato" target="_blank" rel="noopener noreferrer">послушать</a>
+    <a href="mailto:affogato.sound@gmail.com">написать</a>
   </nav>
 
   <div id="scroll-hint" class="scroll-hint" aria-hidden="true">
@@ -33,7 +33,7 @@
     <div class="loader__progress" id="loader-progress">0%</div>
   </div>
 
-  <div id="return-curtain" class="return-curtain" aria-hidden="true"></div>
+  <canvas id="return-ascent" class="return-ascent" aria-hidden="true"></canvas>
 
   <!-- Classic-скрипты по порядку: ES-модули не работают через file:// в Chrome.
        Общий неймспейс — window.Affogato. -->
@@ -43,6 +43,7 @@
   <script src="js/title-overlay.js"></script>
   <script src="js/scene-manager.js"></script>
   <script src="js/underwater-bg.js"></script>
+  <script src="js/return-ascent.js"></script>
   <script src="js/scenes/diving.js"></script>
   <script src="js/scenes/polaroid.js"></script>
   <script src="js/scenes/stone-video.js"></script>

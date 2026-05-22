@@ -5,7 +5,7 @@
 
   var loader = document.getElementById('loader');
   var loaderProgress = document.getElementById('loader-progress');
-  var returnCurtain = document.getElementById('return-curtain');
+  var returnAscent = document.getElementById('return-ascent');
   var topNav = document.getElementById('top-nav');
   var scrollHint = document.getElementById('scroll-hint');
   var canvas = document.getElementById('stage');
@@ -36,6 +36,7 @@
     var stoneVideo = Affogato.Scenes.createStoneVideo(Affogato.Config.scenes.stoneVideo);
 
     Affogato.TitleOverlay.init();
+    Affogato.ReturnAscent.init(returnAscent);
     diving.init(canvas, { frames: frames });
     songScenes.forEach(function (scene) { scene.init(canvas); });
     stoneVideo.init(canvas);
@@ -61,18 +62,15 @@
     });
     stoneVideo.onEnded(function () {
       var returnMs = Affogato.Config.scroll.returnToTopSec * 1000;
-      returnCurtain.classList.add('visible');
+      Affogato.ReturnAscent.start(Affogato.Config.scroll.returnToTopSec, stoneVideo.getVideoElement(), frames);
       window.setTimeout(function () {
-        Affogato.SmoothScroll.unlock();
-        Affogato.SmoothScroll.scrollTo(0, Affogato.Config.scroll.returnToTopSec);
-      }, 380);
-      window.setTimeout(function () {
+        Affogato.SmoothScroll.jumpTo(0);
         Affogato.TitleOverlay.reset();
         SM.render(0);
-      }, 380 + returnMs + 80);
+      }, Math.max(120, returnMs - 90));
       window.setTimeout(function () {
-        returnCurtain.classList.remove('visible');
-      }, 380 + returnMs + 220);
+        Affogato.ReturnAscent.stop();
+      }, returnMs + 240);
     });
 
     // Рисуем первый кадр до показа canvas — чтобы не мигнуло пустотой.
