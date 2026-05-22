@@ -77,13 +77,9 @@ Affogato.Config = {
         },
       ],
     },
-    preVideoDark: {
-      scrollVH: 0.7,
-      color: '#000000',
-    },
     stoneVideo: {
       scrollVH: 1,
-      videoSrc: '', // сюда добавить путь к видео с дном и камнем
+      videoSrc: 'assets/final-video.mp4',
       poster: 'end-frame.jpeg',
       background: '#000000',
     },

@@ -5,6 +5,18 @@ Affogato.Scenes = Affogato.Scenes || {};
 Affogato.Scenes.createStoneVideo = function (cfg) {
   var canvas, ctx, el, video, endedCallback;
   var hasEnded = false;
+  var shownAt = null;
+  var isPlaying = false;
+
+  function clamp01(v) {
+    return v < 0 ? 0 : (v > 1 ? 1 : v);
+  }
+
+  function transitionOpacity(offsetFrac) {
+    if (offsetFrac < 0) return clamp01(1 + offsetFrac);
+    if (offsetFrac > 0) return clamp01(1 - offsetFrac);
+    return 1;
+  }
 
   function createElement() {
     el = document.createElement('section');
@@ -14,6 +26,7 @@ Affogato.Scenes.createStoneVideo = function (cfg) {
       '<div class="stone-video__placeholder"></div>';
 
     video = el.querySelector('.stone-video');
+    video.preload = 'auto';
     if (cfg.videoSrc) video.src = cfg.videoSrc;
     if (cfg.poster) {
       video.poster = cfg.poster;
@@ -46,19 +59,38 @@ Affogato.Scenes.createStoneVideo = function (cfg) {
     resize: function () {},
 
     hide: function () {
+      shownAt = null;
+      isPlaying = false;
+      hasEnded = false;
       if (el) el.style.opacity = 0;
-      if (video && !video.paused) video.pause();
+      if (video) {
+        if (!video.paused) video.pause();
+        if (Number.isFinite(video.duration)) video.currentTime = 0;
+      }
     },
 
     render: function (localProgress, offsetFrac) {
       ctx.fillStyle = cfg.background;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      var opacity = Math.min(1, localProgress / 0.18, (1 - localProgress) / 0.18);
-      el.style.opacity = opacity.toFixed(3);
-      el.style.transform = 'translate3d(0, ' + ((offsetFrac || 0) * 100).toFixed(2) + 'vh, 0)';
+      var offset = offsetFrac || 0;
+      var isEntering = offset > 0 && offset < 1;
+      var isSettled = Math.abs(offset) < 0.02;
+      if ((isEntering || isSettled) && shownAt === null) {
+        shownAt = performance.now();
+      }
+      if (isSettled && !isPlaying) {
+        Affogato.SmoothScroll.lockAtCurrent();
+      }
 
-      if (cfg.videoSrc && video.paused && opacity > 0.85) {
+      var opacity = transitionOpacity(offset);
+      el.style.opacity = opacity.toFixed(3);
+      el.style.transform = 'translate3d(0, ' + (offset * 100).toFixed(2) + 'vh, 0)';
+
+      if (cfg.videoSrc && isSettled && !isPlaying && video.paused) {
+        isPlaying = true;
+        hasEnded = false;
+        video.currentTime = 0;
         video.play();
       }
     },

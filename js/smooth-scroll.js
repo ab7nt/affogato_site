@@ -8,10 +8,12 @@ Affogato.SmoothScroll = (function () {
   var ease = 0.09;
   var autoTransitionProvider = null;
   var autoTransition = null;
+  var lockedAt = null;
   var ignoreProgrammaticScroll = false;
 
   function readTarget() {
     if (ignoreProgrammaticScroll) return;
+    if (lockedAt !== null) return;
     target = window.scrollY || window.pageYOffset || 0;
   }
 
@@ -37,6 +39,7 @@ Affogato.SmoothScroll = (function () {
   }
 
   function startAutoTransition(from, to, durationSec) {
+    lockedAt = null;
     autoTransition = {
       from: from,
       to: to,
@@ -53,10 +56,22 @@ Affogato.SmoothScroll = (function () {
   }
 
   function jumpTo(value) {
+    lockedAt = null;
     autoTransition = null;
     current = value;
     target = value;
     syncNativeScroll(value);
+  }
+
+  function lockAtCurrent() {
+    lockedAt = current;
+    target = current;
+    syncNativeScroll(current);
+  }
+
+  function unlock() {
+    lockedAt = null;
+    readTarget();
   }
 
   function maybeStartAutoTransition() {
@@ -87,6 +102,13 @@ Affogato.SmoothScroll = (function () {
 
   // Вызывается каждый кадр главного цикла, возвращает сглаженную позицию (px).
   function update() {
+    if (lockedAt !== null) {
+      current = lockedAt;
+      target = lockedAt;
+      syncNativeScroll(lockedAt);
+      return current;
+    }
+
     maybeStartAutoTransition();
 
     if (autoTransition) {
@@ -117,6 +139,8 @@ Affogato.SmoothScroll = (function () {
     init: init,
     update: update,
     jumpTo: jumpTo,
+    lockAtCurrent: lockAtCurrent,
+    unlock: unlock,
     scrollTo: scrollTo,
     setAutoTransitionProvider: setAutoTransitionProvider,
   };
