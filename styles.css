@@ -135,50 +135,13 @@ body.ready #stage {
   position: relative;
   width: min(38vw, 410px);
   justify-self: center;
-  padding: 1rem 1rem 3.1rem;
-  background: #eee8dc;
-  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.58);
-  transform: rotate(-3deg);
-}
-
-.polaroid::before,
-.polaroid::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.polaroid::before {
-  background:
-    linear-gradient(110deg, rgba(255, 255, 255, 0.28), transparent 42%),
-    radial-gradient(circle at 20% 28%, rgba(70, 46, 32, 0.14), transparent 24%),
-    radial-gradient(circle at 88% 80%, rgba(68, 45, 28, 0.16), transparent 30%);
-  mix-blend-mode: multiply;
-}
-
-.polaroid::after {
-  border: 1px solid rgba(45, 34, 25, 0.16);
+  filter: drop-shadow(0 24px 34px rgba(0, 0, 0, 0.58));
 }
 
 .polaroid__image {
   display: block;
   width: 100%;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  filter: contrast(0.9) saturate(0.82);
-}
-
-.polaroid__caption {
-  position: absolute;
-  left: 1.1rem;
-  right: 1.1rem;
-  bottom: 0.95rem;
-  color: #2c2925;
-  font-family: 'Poiret One', system-ui, sans-serif;
-  font-size: clamp(1.1rem, 2.5vw, 1.8rem);
-  line-height: 1;
-  text-align: center;
+  height: auto;
 }
 
 .song-note {

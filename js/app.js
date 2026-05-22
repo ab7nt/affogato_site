@@ -41,6 +41,14 @@
       var preVideo = SM.sceneIndex('preVideoDark');
       var ranges = [];
       ranges.push(SM.transitionRange(0));
+      songScenes.forEach(function (scene) {
+        var index = SM.sceneIndex(scene.id);
+        var range = SM.transitionRange(index);
+        if (range) {
+          range.durationSec = Affogato.Config.scroll.songTransitionSec;
+          ranges.push(range);
+        }
+      });
       if (preVideo !== -1) ranges.push(SM.transitionRange(preVideo));
       return ranges;
     });
