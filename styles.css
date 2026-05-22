@@ -135,7 +135,8 @@ body.ready #stage {
   position: relative;
   width: min(38vw, 410px);
   justify-self: center;
-  filter: drop-shadow(0 24px 34px rgba(0, 0, 0, 0.58));
+  filter: drop-shadow(0 14px 40px rgba(0, 0, 0, 0.5));
+  will-change: transform;
 }
 
 .polaroid__image {
@@ -168,7 +169,7 @@ body.ready #stage {
 
 .song-note__text {
   color: rgba(232, 236, 229, 0.72);
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: clamp(1rem, 1.5vw, 1.2rem);
   line-height: 1.65;
 }

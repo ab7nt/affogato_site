@@ -19,17 +19,14 @@
       return Affogato.Scenes.createPolaroid(item, index);
     });
     var stoneVideo = Affogato.Scenes.createStoneVideo(Affogato.Config.scenes.stoneVideo);
-    var returnDark = Affogato.Scenes.createDark('returnDark', Affogato.Config.scenes.returnDark);
 
     Affogato.TitleOverlay.init();
     diving.init(canvas, { frames: frames });
     songScenes.forEach(function (scene) { scene.init(canvas); });
     stoneVideo.init(canvas);
-    returnDark.init(canvas);
     SM.register(diving);
     songScenes.forEach(function (scene) { SM.register(scene); });
     SM.register(stoneVideo);
-    SM.register(returnDark);
     SM.layout(); // задаёт высоту body и размер canvas
 
     window.scrollTo(0, 0);

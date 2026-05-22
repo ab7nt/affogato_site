@@ -82,13 +82,18 @@ Affogato.SmoothScroll = (function () {
     if (!ranges) return;
     if (!Array.isArray(ranges)) ranges = [ranges];
 
+    // Мёртвая зона у границ: после автоперехода current стоит ровно на границе,
+    // а target из-за суб-пиксельного округления нативного скролла чуть «дрожит».
+    // Без зоны это запускало мгновенный переход в обратную сторону — дёрганье карточек.
+    var EDGE_EPS = 2;
+
     for (var i = 0; i < ranges.length; i++) {
       var range = ranges[i];
       if (!range || range.end <= range.start) continue;
 
-      var inRange = target > range.start && target < range.end;
-      var fromTop = current <= range.start && target > range.start;
-      var fromBottom = current >= range.end && target < range.end;
+      var inRange = target > range.start + EDGE_EPS && target < range.end - EDGE_EPS;
+      var fromTop = current <= range.start && target > range.start + EDGE_EPS;
+      var fromBottom = current >= range.end && target < range.end - EDGE_EPS;
 
       if (fromTop || (inRange && target >= current)) {
         startAutoTransition(range.start, range.end, range.durationSec || Affogato.Config.scroll.autoTransitionSec);

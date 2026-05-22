@@ -74,6 +74,10 @@ Affogato.Scenes.createStoneVideo = function (cfg) {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       var offset = offsetFrac || 0;
+      // Нижний свет держим постоянным — он продолжается с последней карточки
+      // и не гаснет, чтобы появление видео было мягким (видео несёт такой же свет).
+      Affogato.UnderwaterBg.renderBottomGlow(ctx, canvas.width, canvas.height, 1);
+
       var isEntering = offset > 0 && offset < 1;
       var isSettled = Math.abs(offset) < 0.02;
       if ((isEntering || isSettled) && shownAt === null) {
