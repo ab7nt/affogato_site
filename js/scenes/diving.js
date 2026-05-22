@@ -76,6 +76,7 @@ Affogato.Scenes.Diving = (function () {
       lastFrame = idx;
 
       drawFrame(frames[idx], offsetFrac || 0);
+      Affogato.TitleOverlay.render(localProgress, offsetFrac || 0);
     },
   };
 

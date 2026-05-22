@@ -16,6 +16,7 @@
     var diving = Affogato.Scenes.Diving;
     var dark = Affogato.Scenes.Dark;
 
+    Affogato.TitleOverlay.init();
     diving.init(canvas, { frames: frames });
     dark.init(canvas);
     SM.register(diving);

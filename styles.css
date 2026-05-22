@@ -27,6 +27,48 @@ body.ready #stage {
   opacity: 1;
 }
 
+.titles {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+  color: rgba(235, 238, 232, 0.94);
+  font-family: 'Poiret One', system-ui, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-align: center;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.34);
+}
+
+.titles__group,
+.titles__album {
+  position: absolute;
+  left: 50%;
+  width: min(88vw, 960px);
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  will-change: top, opacity;
+}
+
+.titles__group {
+  font-size: clamp(
+    calc(3.3rem * var(--title-size-scale, 1)),
+    calc(12vw * var(--title-size-scale, 1)),
+    calc(9.5rem * var(--title-size-scale, 1))
+  );
+  line-height: 0.92;
+}
+
+.titles__album {
+  font-size: clamp(
+    calc(1.65rem * var(--title-size-scale, 1)),
+    calc(5.2vw * var(--title-size-scale, 1)),
+    calc(4.2rem * var(--title-size-scale, 1))
+  );
+  line-height: 1;
+}
+
 #loader {
   position: fixed;
   inset: 0;

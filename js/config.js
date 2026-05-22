@@ -25,6 +25,25 @@ Affogato.Config = {
       framesVH: 2,     // длина сцены погружения в высотах экрана (меньше — быстрее)
       startSpeed: 0.4, // скорость на старте, доля от равномерной:
                        // 1 — равномерно, меньше — сильнее ускорение к концу
+      titles: {
+        sizeScale: 0.85, // общий множитель размера текста: 1 — базово, 1.2 — крупнее, 0.85 — меньше
+        group: {
+          text: 'АФФОГАТО',
+          delaySec: 0.5,
+          startTopVH: 35,
+          endTopVH: 10,
+          opacityStart: 1,
+          opacityEnd: 0.12,
+        },
+        album: {
+          text: 'после падения',
+          delaySec: 0.5,
+          startTopVH: 75,
+          endTopVH: 94,
+          opacityStart: 0.95,
+          opacityEnd: 0.12,
+        },
+      },
     },
     dark: {
       scrollVH: 1,     // длина сцены-плейсхолдера «темнота» (следующая сцена)
