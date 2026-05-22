@@ -54,5 +54,10 @@ Affogato.TitleOverlay = (function () {
     updateItem(albumEl, cfg.album, sceneProgress, albumReveal);
   }
 
-  return { init: init, render: render };
+  function hide() {
+    if (groupEl) groupEl.style.opacity = 0;
+    if (albumEl) albumEl.style.opacity = 0;
+  }
+
+  return { init: init, render: render, hide: hide };
 })();

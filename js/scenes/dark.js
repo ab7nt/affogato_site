@@ -4,13 +4,12 @@
 window.Affogato = window.Affogato || {};
 Affogato.Scenes = Affogato.Scenes || {};
 
-Affogato.Scenes.Dark = (function () {
+Affogato.Scenes.createDark = function (id, cfg) {
   var canvas, ctx;
 
-  var scene = {
-    id: 'dark',
-    get scrollLength() { return Affogato.Config.scenes.dark.scrollVH; },
-
+  return {
+    id: id,
+    get scrollLength() { return cfg.scrollVH; },
     init: function (canvasEl) {
       canvas = canvasEl;
       ctx = canvas.getContext('2d');
@@ -22,10 +21,10 @@ Affogato.Scenes.Dark = (function () {
     render: function (localProgress, offsetFrac) {
       var ch = canvas.height;
       var top = Math.round((offsetFrac || 0) * ch);
-      ctx.fillStyle = Affogato.Config.scenes.dark.color;
+      ctx.fillStyle = cfg.color;
       ctx.fillRect(0, top, canvas.width, ch);
     },
   };
+};
 
-  return scene;
-})();
+Affogato.Scenes.Dark = Affogato.Scenes.createDark('dark', Affogato.Config.scenes.dark);

@@ -11,6 +11,13 @@ Affogato.SceneManager = (function () {
     scenes.push(scene);
   }
 
+  function sceneIndex(id) {
+    for (var i = 0; i < scenes.length; i++) {
+      if (scenes[i].id === id) return i;
+    }
+    return -1;
+  }
+
   // Длина перехода между сценами в px (из конфига — правится вживую).
   function transitionPx() {
     return Affogato.Config.scroll.transitionVH * viewportH;
@@ -54,6 +61,12 @@ Affogato.SceneManager = (function () {
     return v < 0 ? 0 : (v > 1 ? 1 : v);
   }
 
+  function hideInactive(activeIndexes) {
+    for (var i = 0; i < scenes.length; i++) {
+      if (activeIndexes.indexOf(i) === -1 && scenes[i].hide) scenes[i].hide();
+    }
+  }
+
   // Рисует сцену под текущим скроллом. Внутри сцены offsetFrac = 0.
   // В окне перехода обе соседние сцены рисуются со смещением offsetFrac
   // (в долях экрана: 0 — на месте, -1 — целиком ушла вверх, +1 — ждёт снизу).
@@ -67,6 +80,7 @@ Affogato.SceneManager = (function () {
       // Внутри самой сцены i.
       if (scrollPx < offset + sceneLen || isLast) {
         var local = sceneLen > 0 ? clamp01((scrollPx - offset) / sceneLen) : 0;
+        hideInactive([i]);
         scenes[i].render(local, 0);
         return;
       }
@@ -75,6 +89,7 @@ Affogato.SceneManager = (function () {
       // Окно перехода между сценой i и i+1 — обе едут вверх одновременно.
       if (scrollPx < offset + transPx) {
         var t = transPx > 0 ? clamp01((scrollPx - offset) / transPx) : 1;
+        hideInactive([i, i + 1]);
         scenes[i].render(1, -t);          // уходящая:   0 → -1
         scenes[i + 1].render(0, 1 - t);   // приходящая: +1 → 0
         return;
@@ -83,5 +98,11 @@ Affogato.SceneManager = (function () {
     }
   }
 
-  return { register: register, layout: layout, render: render, transitionRange: transitionRange };
+  return {
+    register: register,
+    layout: layout,
+    render: render,
+    transitionRange: transitionRange,
+    sceneIndex: sceneIndex,
+  };
 })();

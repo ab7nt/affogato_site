@@ -48,21 +48,40 @@ Affogato.SmoothScroll = (function () {
     syncNativeScroll(from);
   }
 
+  function scrollTo(value, durationSec) {
+    startAutoTransition(current, value, durationSec);
+  }
+
+  function jumpTo(value) {
+    autoTransition = null;
+    current = value;
+    target = value;
+    syncNativeScroll(value);
+  }
+
   function maybeStartAutoTransition() {
     if (autoTransition) return;
     if (!autoTransitionProvider) return;
 
-    var range = autoTransitionProvider();
-    if (!range || range.end <= range.start) return;
+    var ranges = autoTransitionProvider();
+    if (!ranges) return;
+    if (!Array.isArray(ranges)) ranges = [ranges];
 
-    var inRange = target > range.start && target < range.end;
-    var fromTop = current <= range.start && target > range.start;
-    var fromBottom = current >= range.end && target < range.end;
+    for (var i = 0; i < ranges.length; i++) {
+      var range = ranges[i];
+      if (!range || range.end <= range.start) continue;
 
-    if (fromTop || (inRange && target >= current)) {
-      startAutoTransition(range.start, range.end, Affogato.Config.scroll.autoTransitionSec);
-    } else if (fromBottom || (inRange && target < current)) {
-      startAutoTransition(range.end, range.start, Affogato.Config.scroll.autoTransitionSec);
+      var inRange = target > range.start && target < range.end;
+      var fromTop = current <= range.start && target > range.start;
+      var fromBottom = current >= range.end && target < range.end;
+
+      if (fromTop || (inRange && target >= current)) {
+        startAutoTransition(range.start, range.end, range.durationSec || Affogato.Config.scroll.autoTransitionSec);
+        return;
+      } else if (fromBottom || (inRange && target < current)) {
+        startAutoTransition(range.end, range.start, range.durationSec || Affogato.Config.scroll.autoTransitionSec);
+        return;
+      }
     }
   }
 
@@ -94,5 +113,11 @@ Affogato.SmoothScroll = (function () {
     return current;
   }
 
-  return { init: init, update: update, setAutoTransitionProvider: setAutoTransitionProvider };
+  return {
+    init: init,
+    update: update,
+    jumpTo: jumpTo,
+    scrollTo: scrollTo,
+    setAutoTransitionProvider: setAutoTransitionProvider,
+  };
 })();
