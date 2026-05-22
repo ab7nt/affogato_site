@@ -42,7 +42,7 @@ Affogato.Config = {
           text: 'после падения',
           delaySec: 0.5,
           startTopVH: 75,
-          endTopVH: 94,
+          endTopVH: 87,
           opacityStart: 0.95,
           opacityEnd: 0.22,
         },

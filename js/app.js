@@ -6,10 +6,25 @@
   var loader = document.getElementById('loader');
   var loaderProgress = document.getElementById('loader-progress');
   var returnCurtain = document.getElementById('return-curtain');
+  var topNav = document.getElementById('top-nav');
+  var scrollHint = document.getElementById('scroll-hint');
   var canvas = document.getElementById('stage');
 
   function onProgress(p) {
     loaderProgress.textContent = Math.round(p * 100) + '%';
+  }
+
+  function updateTopNav(scrollPx) {
+    var fadeDistance = window.innerHeight * 0.28;
+    var opacity = Math.max(0, 1 - scrollPx / fadeDistance);
+    topNav.style.opacity = opacity.toFixed(3);
+    topNav.style.pointerEvents = opacity > 0.08 ? 'auto' : 'none';
+  }
+
+  function updateScrollHint(scrollPx, finalSceneStartPx) {
+    var fadeDistance = window.innerHeight * 0.28;
+    var beforeFinal = Math.max(0, Math.min(1, (finalSceneStartPx - scrollPx) / fadeDistance));
+    scrollHint.style.opacity = beforeFinal.toFixed(3);
   }
 
   function start(frames) {
@@ -69,7 +84,13 @@
     window.addEventListener('resize', function () { SM.layout(); });
 
     function loop() {
-      SM.render(Affogato.SmoothScroll.update());
+      var scrollPx = Affogato.SmoothScroll.update();
+      var stoneIndex = SM.sceneIndex('stoneVideo');
+      var previousTransition = SM.transitionRange(stoneIndex - 1);
+      var stoneStart = previousTransition ? previousTransition.end : Infinity;
+      updateTopNav(scrollPx);
+      updateScrollHint(scrollPx, stoneStart);
+      SM.render(scrollPx);
       requestAnimationFrame(loop);
     }
     requestAnimationFrame(loop);

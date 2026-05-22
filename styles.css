@@ -27,6 +27,87 @@ body.ready #stage {
   opacity: 1;
 }
 
+.top-nav {
+  position: fixed;
+  top: clamp(1.1rem, 3vw, 2rem);
+  left: 50%;
+  z-index: 5;
+  display: flex;
+  gap: clamp(1.5rem, 5vw, 3.5rem);
+  transform: translateX(-50%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+  will-change: opacity;
+}
+
+body.ready .top-nav {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.top-nav a {
+  color: rgba(232, 236, 229, 0.78);
+  font-family: 'Poiret One', system-ui, sans-serif;
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+  line-height: 1;
+  letter-spacing: 0;
+  text-decoration: none;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.42);
+  transition: color 0.25s ease, opacity 0.25s ease;
+}
+
+.top-nav a:hover {
+  color: rgba(255, 255, 255, 0.94);
+}
+
+.scroll-hint {
+  position: fixed;
+  left: 50%;
+  bottom: clamp(1.2rem, 4vw, 2.4rem);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  color: rgba(232, 236, 229, 0.68);
+  font-family: 'Poiret One', system-ui, sans-serif;
+  font-size: clamp(1rem, 2vw, 1.3rem);
+  line-height: 1;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.45);
+  transform: translateX(-50%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+  will-change: opacity;
+}
+
+body.ready .scroll-hint {
+  opacity: 1;
+}
+
+.scroll-hint__arrow {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-right: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  transform: rotate(45deg);
+  animation: scroll-hint-arrow 1.8s ease-in-out infinite;
+}
+
+@keyframes scroll-hint-arrow {
+  0%,
+  100% {
+    opacity: 0.32;
+    translate: 0 0;
+  }
+
+  50% {
+    opacity: 0.9;
+    translate: 0 0.35rem;
+  }
+}
+
 .titles {
   position: fixed;
   inset: 0;
