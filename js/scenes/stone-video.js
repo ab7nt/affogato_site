@@ -66,6 +66,7 @@ Affogato.Scenes.createStoneVideo = function (cfg) {
       shownAt = null;
       isPlaying = false;
       hasEnded = false;
+      if (Affogato.TitleOverlay) Affogato.TitleOverlay.setFinalFade(1);
       if (el) el.style.opacity = 0;
       if (video) {
         if (!video.paused) video.pause();
@@ -100,6 +101,12 @@ Affogato.Scenes.createStoneVideo = function (cfg) {
         hasEnded = false;
         video.currentTime = 0;
         video.play();
+      }
+
+      if (isSettled && Affogato.TitleOverlay && Number.isFinite(video.duration) && video.duration > 0) {
+        var videoProgress = clamp01(video.currentTime / video.duration);
+        var titleFade = 1 - clamp01(videoProgress / 0.5);
+        Affogato.TitleOverlay.setFinalFade(titleFade);
       }
     },
   };

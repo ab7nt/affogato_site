@@ -41,11 +41,6 @@ body.ready #stage {
   will-change: opacity;
 }
 
-body.ready .top-nav {
-  opacity: 1;
-  pointer-events: auto;
-}
-
 .top-nav a {
   color: rgba(232, 236, 229, 0.78);
   font-family: 'Poiret One', system-ui, sans-serif;

@@ -16,7 +16,8 @@
 
   function updateTopNav(scrollPx) {
     var fadeDistance = window.innerHeight * 0.28;
-    var opacity = Math.max(0, 1 - scrollPx / fadeDistance);
+    var reveal = Affogato.TitleOverlay.getAlbumReveal();
+    var opacity = reveal * Math.max(0, 1 - scrollPx / fadeDistance);
     topNav.style.opacity = opacity.toFixed(3);
     topNav.style.pointerEvents = opacity > 0.08 ? 'auto' : 'none';
   }
