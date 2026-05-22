@@ -25,6 +25,21 @@ Affogato.SceneManager = (function () {
     return sum;
   }
 
+  function transitionRange(index) {
+    var offset = 0;
+    for (var i = 0; i < scenes.length; i++) {
+      var sceneLen = scenes[i].scrollLength * viewportH;
+      if (i === index) {
+        return {
+          start: offset + sceneLen,
+          end: offset + sceneLen + transitionPx(),
+        };
+      }
+      offset += sceneLen + transitionPx();
+    }
+    return null;
+  }
+
   // Высота body задаёт диапазон нативного скролла:
   // суммарная длина сцен и переходов + один экран.
   function layout() {
@@ -68,5 +83,5 @@ Affogato.SceneManager = (function () {
     }
   }
 
-  return { register: register, layout: layout, render: render };
+  return { register: register, layout: layout, render: render, transitionRange: transitionRange };
 })();

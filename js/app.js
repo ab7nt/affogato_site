@@ -25,6 +25,9 @@
 
     window.scrollTo(0, 0);
     Affogato.SmoothScroll.init({ ease: Affogato.Config.scroll.ease });
+    Affogato.SmoothScroll.setAutoTransitionProvider(function () {
+      return SM.transitionRange(0);
+    });
 
     // Рисуем первый кадр до показа canvas — чтобы не мигнуло пустотой.
     SM.render(0);
