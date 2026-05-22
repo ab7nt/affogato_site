@@ -59,6 +59,10 @@
         Affogato.SmoothScroll.scrollTo(0, Affogato.Config.scroll.returnToTopSec);
       }, 380);
       window.setTimeout(function () {
+        Affogato.TitleOverlay.reset();
+        SM.render(0);
+      }, 380 + returnMs + 80);
+      window.setTimeout(function () {
         returnCurtain.classList.remove('visible');
       }, 380 + returnMs + 220);
     });

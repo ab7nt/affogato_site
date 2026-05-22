@@ -60,10 +60,6 @@ Affogato.Scenes.Diving = (function () {
       applySize();
     },
 
-    hide: function () {
-      Affogato.TitleOverlay.hide();
-    },
-
     // offsetFrac — вертикальное смещение сцены при переходе (0 — на месте).
     render: function (localProgress, offsetFrac) {
       var cfg = Affogato.Config.scenes.diving;
