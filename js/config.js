@@ -67,7 +67,7 @@ Affogato.Config = {
         // Положения и яркость титров на экране плеера. Не заданное — берётся
         // из endTopVH / opacityEnd соответствующего блока.
         player: {
-          groupTopVH: 16,      // как опустить «АФФОГАТО» под навигацию плеера
+          groupTopVH: 17,      // как опустить «АФФОГАТО» под навигацию плеера
           albumTopVH: 87,
           groupOpacity: 0.32,
           albumOpacity: 0.22,
