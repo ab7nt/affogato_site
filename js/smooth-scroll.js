@@ -11,11 +11,13 @@ Affogato.SmoothScroll = (function () {
   var lockedAt = null;
   var ignoreProgrammaticScroll = false;
   var nativeScrollBlocked = false;
+  var scrollReadyAt = 0; // grace-период после разблокировки — игнор отложенных scroll-event
 
   function readTarget() {
     if (ignoreProgrammaticScroll) return;
     if (lockedAt !== null) return;
     if (autoTransition) return; // во время автоперехода нативный target нас не интересует
+    if (performance.now() < scrollReadyAt) return; // отсекаем «эхо» iOS Safari
     target = window.scrollY || window.pageYOffset || 0;
   }
 
@@ -41,6 +43,11 @@ Affogato.SmoothScroll = (function () {
     document.body.classList.remove('scroll-locked');
     window.removeEventListener('touchmove', preventNativeScroll);
     window.removeEventListener('wheel', preventNativeScroll);
+    // iOS Safari присылает scroll-event с задержкой — после syncNativeScroll
+    // прилетает «эхо» со старой позицией (где была touch-инерция). Если его
+    // подхватить как target, тут же стартанёт обратный автопереход и сцена
+    // вернётся назад. 280мс хватает, чтобы такие события отстоялись.
+    scrollReadyAt = performance.now() + 280;
   }
 
   function init(opts) {
@@ -127,11 +134,15 @@ Affogato.SmoothScroll = (function () {
       var fromTop = current <= range.start && target > range.start + EDGE_EPS;
       var fromBottom = current >= range.end && target < range.end - EDGE_EPS;
 
+      // from = current, а не граница range: иначе сглаженная позиция, в которую
+      // юзер уже частично «зашёл», откатывается назад в начале перехода —
+      // визуально это и есть дёрганье на стыке сцен.
+      var dur = range.durationSec || Affogato.Config.scroll.autoTransitionSec;
       if (fromTop || (inRange && target >= current)) {
-        startAutoTransition(range.start, range.end, range.durationSec || Affogato.Config.scroll.autoTransitionSec);
+        startAutoTransition(current, range.end, dur);
         return;
       } else if (fromBottom || (inRange && target < current)) {
-        startAutoTransition(range.end, range.start, range.durationSec || Affogato.Config.scroll.autoTransitionSec);
+        startAutoTransition(current, range.start, dur);
         return;
       }
     }
