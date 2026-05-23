@@ -361,9 +361,13 @@ Affogato.Player = (function () {
     returnScrollDebt += amount;
     var threshold = playerCfg().returnScrollThreshold || 900;
     if (returnScrollDebt >= threshold) {
+      // Сохраняем накопленный preview-прогресс до сброса, чтобы реальная
+      // анимация всплытия стартовала ровно с того места, где замер preview —
+      // иначе камень дёрнется обратно в исходное положение и пойдёт заново.
+      var carryProgress = returnPreviewProgress * (playerCfg().returnPreviewMax || 0.14);
       returnScrollDebt = 0;
       cancelReturnPreviewSettle();
-      closePlayer();
+      closePlayer({ startProgress: carryProgress });
       return;
     }
 
@@ -475,9 +479,10 @@ Affogato.Player = (function () {
     }, dur * 1000);
   }
 
-  function closePlayer() {
+  function closePlayer(opts) {
     if (mode !== 'open') return;
     mode = 'ascending';
+    var startProgress = clamp01((opts && opts.startProgress) || 0);
     resetReturnGesture();
     setPlatformsOpen(false);
     pauseAudio();
@@ -491,11 +496,15 @@ Affogato.Player = (function () {
     Affogato.Transit.start('up', dur, {
       stoneImage: stoneImage,
       frames: divingFrames,
+      startProgress: startProgress,
       onProgress: function (p) {
         Affogato.TitleOverlay.renderPlayerTransition(p);
       },
     });
 
+    // Реальная длительность короче на пропущенную долю — иначе setTimeout
+    // отработает позже завершения анимации и оставит лишний idle-хвост.
+    var remainingMs = Math.max(120, (1 - startProgress) * dur * 1000);
     window.setTimeout(function () {
       Affogato.SmoothScroll.jumpTo(0);
       Affogato.TitleOverlay.reset();
@@ -503,7 +512,7 @@ Affogato.Player = (function () {
       Affogato.SmoothScroll.unlock();
       document.body.classList.remove('player-transitioning');
       mode = 'closed';
-    }, dur * 1000);
+    }, remainingMs);
   }
 
   // ───────────────────────────────────── tracks / audio ──

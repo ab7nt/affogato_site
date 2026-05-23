@@ -98,7 +98,12 @@ Affogato.Transit = (function () {
     };
   }
 
-  function drawCoverImageWithBottomFade(img, y, scaleExtra, alpha, filter, fadeStrength) {
+  // Растворяет ВЕРХНИЙ край картинки в прозрачность: при подъёме камень
+  // опускается вниз (это и ощущается как «я всплываю»), его верх уходит вниз
+  // — над ним обнажается чёрная вода, граница картинки не должна быть видна.
+  // Маска делается чисто через destination-in на offscreen — без ctx.filter
+  // blur, который в iOS Safari не отрабатывает и оставляет ровные стыки.
+  function drawCoverImageWithTopFade(img, y, scaleExtra, alpha, filter, fadeStrength) {
     if (!isImageReady(img)) return;
     var rect = coverImageRect(img, y, scaleExtra);
     var fade = clamp01(fadeStrength);
@@ -107,12 +112,9 @@ Affogato.Transit = (function () {
       return;
     }
 
-    // Растушёвка делается чисто масочно (destination-in на offscreen).
-    // Skirt (зеркало нижней полосы с ctx.filter='blur(...)') убран: в iOS Safari
-    // blur у canvas-фильтра не отрабатывает — стык skirt-а виден ровной линией.
     var fadeHeight = Math.min(canvas.height * 0.52, rect.h * 0.42);
-    var fadeStart = rect.y + rect.h - fadeHeight;
-    var fadeEnd = rect.y + rect.h;
+    var fadeStart = rect.y;
+    var fadeEnd = rect.y + fadeHeight;
 
     imageMaskCtx.clearRect(0, 0, imageMaskCanvas.width, imageMaskCanvas.height);
     imageMaskCtx.save();
@@ -124,14 +126,14 @@ Affogato.Transit = (function () {
     imageMaskCtx.save();
     imageMaskCtx.globalCompositeOperation = 'destination-in';
 
-    // Кривая чуть «выгнута» к низу: до 35% длины — почти не трогаем,
-    // дальше плавное замедление к полной прозрачности. Без этого линейный
-    // градиент даёт зрительный «коридор» одинаковой плотности.
+    // Кривая «выгнута» к верху: самый верх — почти прозрачно, затем плавное
+    // нарастание к непрозрачности. Без этого линейный градиент даёт зрительный
+    // «коридор» одинаковой плотности.
     var mask = imageMaskCtx.createLinearGradient(0, fadeStart, 0, fadeEnd);
-    mask.addColorStop(0, 'rgba(0,0,0,1)');
-    mask.addColorStop(0.35, 'rgba(0,0,0,0.95)');
-    mask.addColorStop(0.7, 'rgba(0,0,0,0.45)');
-    mask.addColorStop(1, 'rgba(0,0,0,' + (1 - fade).toFixed(3) + ')');
+    mask.addColorStop(0, 'rgba(0,0,0,' + (1 - fade).toFixed(3) + ')');
+    mask.addColorStop(0.3, 'rgba(0,0,0,0.45)');
+    mask.addColorStop(0.65, 'rgba(0,0,0,0.95)');
+    mask.addColorStop(1, 'rgba(0,0,0,1)');
     imageMaskCtx.fillStyle = mask;
     imageMaskCtx.fillRect(0, 0, imageMaskCanvas.width, imageMaskCanvas.height);
     imageMaskCtx.restore();
@@ -187,13 +189,13 @@ Affogato.Transit = (function () {
     }
   }
 
-  // 'up'-фаза: камень уезжает вверх, постепенно теряя яркость.
-  // fade низа — всегда 1: иначе при малом stoneP нижний край картинки виден ровной линией.
+  // 'up'-фаза: камень опускается вниз — это и ощущается как подъём наблюдателя.
+  // Сверху обнажается тёмная вода; верхний край картинки растушёван (fade=1).
   function drawStoneFloatingUp(stoneP) {
     var h = canvas.height;
-    drawCoverImageWithBottomFade(
+    drawCoverImageWithTopFade(
       stoneSource,
-      -h * 0.9 * stoneP,
+      h * 0.9 * stoneP,
       1 + stoneP * 0.04,
       clamp01(0.92 - stoneP * 0.62),
       'brightness(' + (0.78 - stoneP * 0.2).toFixed(3) + ') contrast(0.92) saturate(0.72)',
@@ -203,9 +205,9 @@ Affogato.Transit = (function () {
 
   function drawStonePreviewLift(stoneP) {
     var h = canvas.height;
-    drawCoverImageWithBottomFade(
+    drawCoverImageWithTopFade(
       stoneSource,
-      -h * 0.9 * stoneP,
+      h * 0.9 * stoneP,
       1 + stoneP * 0.04,
       1,
       'brightness(' + (0.78 - stoneP * 0.035).toFixed(3) + ') contrast(0.92) saturate(0.72)',
@@ -213,26 +215,28 @@ Affogato.Transit = (function () {
     );
   }
 
-  function drawBottomDepthVeil(strength, mode) {
+  // Плёнка «толщи воды» в верхней половине экрана: накатывается сверху
+  // по мере подъёма, имитируя ту самую тьму глубин, через которую всплываешь.
+  function drawTopDepthVeil(strength, mode) {
     var w = canvas.width;
     var h = canvas.height;
     var p = clamp01(strength);
-    var veil = ctx.createLinearGradient(0, h * 0.48, 0, h);
     var isPreview = mode === 'preview';
-    veil.addColorStop(0, 'rgba(0,0,0,0)');
-    veil.addColorStop(0.48, 'rgba(0,0,0,' + (isPreview ? (p * 0.26) : (0.18 + p * 0.22)).toFixed(3) + ')');
-    veil.addColorStop(1, 'rgba(0,0,0,' + (isPreview ? (p * 0.86) : (0.78 + p * 0.16)).toFixed(3) + ')');
+    var veil = ctx.createLinearGradient(0, 0, 0, h * 0.52);
+    veil.addColorStop(0, 'rgba(0,0,0,' + (isPreview ? (p * 0.86) : (0.78 + p * 0.16)).toFixed(3) + ')');
+    veil.addColorStop(0.52, 'rgba(0,0,0,' + (isPreview ? (p * 0.26) : (0.18 + p * 0.22)).toFixed(3) + ')');
+    veil.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = veil;
-    ctx.fillRect(0, h * 0.48, w, h * 0.52);
+    ctx.fillRect(0, 0, w, h * 0.52);
   }
 
   // 'down'-фаза: камень поднимается снизу, устанавливается в центре и проявляется.
-  // fade низа нарастает синхронно с приходом камня — чтобы к моменту stoneP=1
+  // fade верха нарастает синхронно с приходом камня — чтобы к моменту stoneP=1
   // он сошёлся с фейдом idle-кадра без видимого скачка.
   function drawStoneArriving(stoneP) {
     var h = canvas.height;
     var p = 1 - stoneP; // stoneP=0 — далеко снизу; stoneP=1 — на месте.
-    drawCoverImageWithBottomFade(
+    drawCoverImageWithTopFade(
       stoneSource,
       h * 0.9 * p,
       1 + p * 0.04,
@@ -258,7 +262,7 @@ Affogato.Transit = (function () {
       var stoneP = easeInOutCubic(localProgress(progress, 0, STONE_END));
       drawDarkWater(stoneP, 1, 7);
       drawStoneFloatingUp(stoneP);
-      drawBottomDepthVeil(stoneP);
+      drawTopDepthVeil(stoneP);
     } else if (progress < WATER_END) {
       var waterP = easeInOutCubic(localProgress(progress, STONE_END, WATER_END));
       drawDarkWater(waterP, 1 - waterP * 0.32, 9);
@@ -306,7 +310,7 @@ Affogato.Transit = (function () {
     var h = canvas.height;
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, w, h);
-    drawCoverImageWithBottomFade(
+    drawCoverImageWithTopFade(
       stoneSource, 0, 1, 1,
       'brightness(0.78) contrast(0.92) saturate(0.72)', 1
     );
@@ -368,14 +372,19 @@ Affogato.Transit = (function () {
     setSources(opts);
     onProgress = typeof opts.onProgress === 'function' ? opts.onProgress : null;
 
+    // startProgress позволяет продолжить с того места, где остановился preview.
+    // Без этого срыв из preview → animating даёт скачок назад: камень мгновенно
+    // возвращается на y=0 и заново начинает опускаться.
+    var startProgress = clamp01(opts.startProgress || 0);
+    if (startProgress > 0.95) startProgress = 0.95;
     duration = Math.max(0.3, durationSec || 0.8) * 1000;
-    startedAt = performance.now();
+    startedAt = performance.now() - startProgress * duration;
     lastIdleDrawAt = 0;
     phase = 'animating';
     resize();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (direction === 'down') drawDescent(0);
-    else drawAscent(0);
+    if (direction === 'down') drawDescent(startProgress);
+    else drawAscent(startProgress);
 
     canvas.style.transition = 'none';
     canvas.classList.add('visible');
