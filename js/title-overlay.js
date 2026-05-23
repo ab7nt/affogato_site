@@ -31,6 +31,19 @@ Affogato.TitleOverlay = (function () {
     return 1 - Math.pow(1 - t, 3);
   }
 
+  function resolveItemConfig(cfg, key) {
+    var item = {};
+    var base = cfg[key];
+    var mobile = cfg.mobile && cfg.mobile[key];
+    var useMobile = window.matchMedia && window.matchMedia('(max-width: 760px)').matches;
+
+    for (var prop in base) item[prop] = base[prop];
+    if (useMobile && mobile) {
+      for (var mobileProp in mobile) item[mobileProp] = mobile[mobileProp];
+    }
+    return item;
+  }
+
   function applyOpacity(el, baseOpacity) {
     el.style.opacity = (baseOpacity * finalFade).toFixed(3);
   }
@@ -59,8 +72,8 @@ Affogato.TitleOverlay = (function () {
     var albumReveal = (elapsedSec - cfg.group.delaySec - cfg.album.delaySec) / 0.9;
     albumRevealValue = clamp01(albumReveal);
 
-    groupBaseOpacity = updateItem(groupEl, cfg.group, sceneProgress, groupReveal);
-    albumBaseOpacity = updateItem(albumEl, cfg.album, sceneProgress, albumReveal);
+    groupBaseOpacity = updateItem(groupEl, resolveItemConfig(cfg, 'group'), sceneProgress, groupReveal);
+    albumBaseOpacity = updateItem(albumEl, resolveItemConfig(cfg, 'album'), sceneProgress, albumReveal);
     applyOpacity(groupEl, groupBaseOpacity);
     applyOpacity(albumEl, albumBaseOpacity);
   }

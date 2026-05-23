@@ -9,6 +9,7 @@
   var topNav = document.getElementById('top-nav');
   var scrollHint = document.getElementById('scroll-hint');
   var canvas = document.getElementById('stage');
+  var isReturningToStart = false;
 
   function onProgress(p) {
     loaderProgress.textContent = Math.round(p * 100) + '%';
@@ -63,14 +64,19 @@
     });
     stoneVideo.onEnded(function () {
       var returnMs = Affogato.Config.scroll.returnToTopSec * 1000;
+      isReturningToStart = true;
       Affogato.ReturnAscent.start(Affogato.Config.scroll.returnToTopSec, stoneVideo.getVideoElement(), frames);
       window.setTimeout(function () {
         Affogato.SmoothScroll.jumpTo(0);
         Affogato.TitleOverlay.reset();
+        songScenes.forEach(function (scene) { scene.hide(); });
+        stoneVideo.hide();
         SM.render(0);
       }, Math.max(120, returnMs - 90));
       window.setTimeout(function () {
         Affogato.ReturnAscent.stop();
+        SM.render(0);
+        isReturningToStart = false;
       }, returnMs + 240);
     });
 
@@ -83,6 +89,11 @@
     window.addEventListener('resize', function () { SM.layout(); });
 
     function loop() {
+      if (isReturningToStart) {
+        requestAnimationFrame(loop);
+        return;
+      }
+
       var scrollPx = Affogato.SmoothScroll.update();
       var stoneIndex = SM.sceneIndex('stoneVideo');
       var previousTransition = SM.transitionRange(stoneIndex - 1);

@@ -46,6 +46,12 @@ Affogato.Config = {
           opacityStart: 0.95,
           opacityEnd: 0.22,
         },
+        mobile: {
+          album: {
+            startTopVH: 51,
+            endTopVH: 14,
+          },
+        },
       },
     },
     songs: {
