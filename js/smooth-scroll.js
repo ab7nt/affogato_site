@@ -10,11 +10,37 @@ Affogato.SmoothScroll = (function () {
   var autoTransition = null;
   var lockedAt = null;
   var ignoreProgrammaticScroll = false;
+  var nativeScrollBlocked = false;
 
   function readTarget() {
     if (ignoreProgrammaticScroll) return;
     if (lockedAt !== null) return;
+    if (autoTransition) return; // во время автоперехода нативный target нас не интересует
     target = window.scrollY || window.pageYOffset || 0;
+  }
+
+  // Блокировка нативного скролла на время автоперехода и locked-state плеера.
+  // Без неё iOS Safari продолжает свою touch-инерцию параллельно и конфликтует
+  // с syncNativeScroll() — отсюда «неадекватный» скролл при смене сцен.
+  function preventNativeScroll(e) {
+    if (!nativeScrollBlocked) return;
+    if (e.cancelable) e.preventDefault();
+  }
+
+  function blockNativeScroll() {
+    if (nativeScrollBlocked) return;
+    nativeScrollBlocked = true;
+    document.body.classList.add('scroll-locked');
+    window.addEventListener('touchmove', preventNativeScroll, { passive: false });
+    window.addEventListener('wheel', preventNativeScroll, { passive: false });
+  }
+
+  function unblockNativeScroll() {
+    if (!nativeScrollBlocked) return;
+    nativeScrollBlocked = false;
+    document.body.classList.remove('scroll-locked');
+    window.removeEventListener('touchmove', preventNativeScroll);
+    window.removeEventListener('wheel', preventNativeScroll);
   }
 
   function init(opts) {
@@ -50,6 +76,7 @@ Affogato.SmoothScroll = (function () {
     };
     current = from;
     target = from;
+    blockNativeScroll();
     syncNativeScroll(from);
   }
 
@@ -62,17 +89,20 @@ Affogato.SmoothScroll = (function () {
     autoTransition = null;
     current = value;
     target = value;
+    unblockNativeScroll();
     syncNativeScroll(value);
   }
 
   function lockAtCurrent() {
     lockedAt = current;
     target = current;
+    blockNativeScroll();
     syncNativeScroll(current);
   }
 
   function unlock() {
     lockedAt = null;
+    unblockNativeScroll();
     readTarget();
   }
 
@@ -108,11 +138,13 @@ Affogato.SmoothScroll = (function () {
   }
 
   // Вызывается каждый кадр главного цикла, возвращает сглаженную позицию (px).
+  // syncNativeScroll каждый кадр НЕ зовём — в iOS Safari он конфликтует с
+  // нативной touch-инерцией, давая дёрганье. Синхронизируемся однократно
+  // в начале (blockNativeScroll + syncNativeScroll) и при завершении.
   function update() {
     if (lockedAt !== null) {
       current = lockedAt;
       target = lockedAt;
-      syncNativeScroll(lockedAt);
       return current;
     }
 
@@ -124,15 +156,15 @@ Affogato.SmoothScroll = (function () {
       if (p >= 1) {
         current = autoTransition.to;
         target = autoTransition.to;
-        syncNativeScroll(autoTransition.to);
         autoTransition = null;
+        unblockNativeScroll();
+        syncNativeScroll(current);
         return current;
       }
 
       var k = easeInOutCubic(p);
       current = autoTransition.from + (autoTransition.to - autoTransition.from) * k;
       target = current;
-      syncNativeScroll(current);
       return current;
     }
 
