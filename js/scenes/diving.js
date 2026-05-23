@@ -9,7 +9,8 @@ Affogato.Scenes.Diving = (function () {
 
   function applySize() {
     // Ограничиваем DPR: исходники 1280px, выше 2x прироста детализации нет.
-    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var perf = Affogato.Config.performance || {};
+    var dpr = Math.min(window.devicePixelRatio || 1, perf.maxDpr || 1.5);
     var w = window.innerWidth;
     var h = window.innerHeight;
     canvas.width = Math.round(w * dpr);

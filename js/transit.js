@@ -14,6 +14,7 @@ Affogato.Transit = (function () {
   var stoneSource = null;
   var divingFrames = null;
   var phase = 'idle'; // 'idle' | 'animating' | 'idle-after-descent' | 'finished'
+  var lastIdleDrawAt = 0;
 
   // Опорные точки фаз для 'up' (как в исходной всплытой анимации):
   // 0…STONE_END — камень уезжает вверх; STONE_END…WATER_END — тёмная вода;
@@ -46,7 +47,8 @@ Affogato.Transit = (function () {
   }
 
   function resize() {
-    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var perf = Affogato.Config.performance || {};
+    var dpr = Math.min(window.devicePixelRatio || 1, perf.maxDpr || 1.5);
     canvas.width = Math.round(window.innerWidth * dpr);
     canvas.height = Math.round(window.innerHeight * dpr);
     canvas.style.width = window.innerWidth + 'px';
@@ -205,9 +207,10 @@ Affogato.Transit = (function () {
     drawVignette(1);
   }
 
-  function tick() {
+  function tick(timestamp) {
+    var now = typeof timestamp === 'number' ? timestamp : performance.now();
     if (phase === 'animating') {
-      var p = clamp01((performance.now() - startedAt) / duration);
+      var p = clamp01((now - startedAt) / duration);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (direction === 'down') drawDescent(p);
       else drawAscent(p);
@@ -221,7 +224,12 @@ Affogato.Transit = (function () {
         phase = 'finished'; // последний кадр всплытия зависает до stop()
       }
     } else if (phase === 'idle-after-descent') {
-      drawIdleStone();
+      var perf = Affogato.Config.performance || {};
+      var idleInterval = 1000 / (perf.transitIdleFps || 24);
+      if (!lastIdleDrawAt || now - lastIdleDrawAt >= idleInterval) {
+        lastIdleDrawAt = now;
+        drawIdleStone();
+      }
       raf = requestAnimationFrame(tick);
     }
   }
@@ -246,6 +254,7 @@ Affogato.Transit = (function () {
 
     duration = Math.max(0.3, durationSec || 0.8) * 1000;
     startedAt = performance.now();
+    lastIdleDrawAt = 0;
     phase = 'animating';
     resize();
     ctx.clearRect(0, 0, canvas.width, canvas.height);

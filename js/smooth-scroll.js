@@ -33,6 +33,8 @@ Affogato.SmoothScroll = (function () {
   }
 
   function syncNativeScroll(value) {
+    var nativeY = window.scrollY || window.pageYOffset || 0;
+    if (Math.abs(nativeY - value) < 0.5) return;
     ignoreProgrammaticScroll = true;
     window.scrollTo(0, value);
     ignoreProgrammaticScroll = false;
@@ -140,6 +142,15 @@ Affogato.SmoothScroll = (function () {
     return current;
   }
 
+  function getState() {
+    return {
+      target: target,
+      current: current,
+      autoTransitioning: !!autoTransition,
+      locked: lockedAt !== null,
+    };
+  }
+
   return {
     init: init,
     update: update,
@@ -148,5 +159,6 @@ Affogato.SmoothScroll = (function () {
     unlock: unlock,
     scrollTo: scrollTo,
     setAutoTransitionProvider: setAutoTransitionProvider,
+    getState: getState,
   };
 })();

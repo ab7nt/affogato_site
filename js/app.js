@@ -97,15 +97,32 @@
 
     window.addEventListener('resize', function () { SM.layout(); });
 
-    function loop() {
+    var lastFrameAt = 0;
+    function loop(timestamp) {
       // На время плеера и финального подъёма главный цикл стоит: иначе
       // updateTopNav/updateScrollHint перезаписывают inline opacity=0 и top-nav
       // успевает плавно «вернуться» поверх угасающего transit-canvas.
       var playerActive = Affogato.Player && Affogato.Player.isActive();
       if (isReturningToStart || playerActive) {
+        window.setTimeout(function () {
+          requestAnimationFrame(loop);
+        }, (Affogato.Config.performance && Affogato.Config.performance.sleepMs) || 180);
+        return;
+      }
+
+      var now = typeof timestamp === 'number' ? timestamp : performance.now();
+      var perf = Affogato.Config.performance || {};
+      var scrollState = Affogato.SmoothScroll.getState ? Affogato.SmoothScroll.getState() : null;
+      var isScrollActive = !scrollState ||
+        scrollState.autoTransitioning ||
+        Math.abs(scrollState.target - scrollState.current) > 0.2;
+      var fps = isScrollActive ? (perf.activeFps || 60) : (perf.idleFps || 30);
+      var frameInterval = 1000 / fps;
+      if (lastFrameAt && now - lastFrameAt < frameInterval) {
         requestAnimationFrame(loop);
         return;
       }
+      lastFrameAt = now;
 
       var scrollPx = Affogato.SmoothScroll.update();
       var stoneIndex = SM.sceneIndex('stoneVideo');
