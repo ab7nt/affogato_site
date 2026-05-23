@@ -92,9 +92,10 @@ Affogato.Scenes.createStoneVideo = function (cfg) {
         Affogato.SmoothScroll.lockAtCurrent();
       }
 
-      var opacity = transitionOpacity(offset);
+      var renderOffset = isSettled ? 0 : offset;
+      var opacity = isSettled ? 1 : transitionOpacity(offset);
       el.style.opacity = opacity.toFixed(3);
-      el.style.transform = 'translate3d(0, ' + (offset * 100).toFixed(2) + 'vh, 0)';
+      el.style.transform = 'translate3d(0, ' + (renderOffset * 100).toFixed(2) + 'vh, 0)';
 
       if (cfg.videoSrc && isSettled && !isPlaying && video.paused) {
         isPlaying = true;

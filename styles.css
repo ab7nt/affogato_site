@@ -266,10 +266,12 @@ body.ready .scroll-hint {
 .stone-video,
 .stone-video__placeholder {
   position: absolute;
-  inset: -2px;
-  width: calc(100% + 4px);
-  height: calc(100% + 4px);
+  top: -4vh;
+  left: -4vw;
+  width: 108vw;
+  height: 108vh;
   object-fit: cover;
+  object-position: center center;
 }
 
 .stone-video__placeholder {
