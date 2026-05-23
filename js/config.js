@@ -125,6 +125,46 @@ Affogato.Config = {
     descentSec: 1.2,  // длительность анимации погружения по клику «послушать»
     ascentSec: 1.2,   // держим симметрию: возврат ощущается как обратное погружение
     initialVolume: 0.8, // дефолтная громкость до первого сохранения в localStorage
+    platforms: [
+      {
+        name: 'Яндекс Музыка',
+        url: 'https://music.yandex.ru/artist/25763131',
+        icon: 'https://music.yandex.ru/favicon.ico',
+      },
+      {
+        name: 'VK Музыка',
+        url: 'https://vk.ru/artist/3370093710875078942',
+        icon: 'https://vk.ru/favicon.ico',
+        iconFit: 'cover',
+      },
+      {
+        name: 'Spotify',
+        url: 'https://open.spotify.com/artist/5xUN3y9ink4drWwpSX441a',
+        icon: 'https://open.spotify.com/favicon.ico',
+      },
+      {
+        name: 'Apple Music',
+        url: 'https://music.apple.com/to/artist/аффогато/1894767834',
+        icon: 'https://music.apple.com/favicon.ico',
+        iconFit: 'cover',
+      },
+      {
+        name: 'МТС Музыка',
+        url: 'https://music.mts.ru/artist/25763131',
+        icon: 'https://music.mts.ru/favicon.ico',
+        iconFit: 'cover',
+      },
+      {
+        name: 'Звук',
+        url: 'https://zvuk.com/artist/214192655',
+        icon: 'https://zvuk.com/favicon.ico',
+      },
+      {
+        name: 'Deezer',
+        url: 'https://www.deezer.com/ru/artist/388195261',
+        icon: 'https://www.deezer.com/favicon.ico',
+      },
+    ],
   },
 
   // Процедурный подводный фон песенных сцен (js/underwater-bg.js).

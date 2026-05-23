@@ -4,9 +4,9 @@
 window.Affogato = window.Affogato || {};
 
 Affogato.Player = (function () {
-  var triggerEl, playerEl, titleEl, playBtn, prevBtn, nextBtn;
+  var triggerEl, playerShellEl, playerEl, titleEl, playBtn, prevBtn, nextBtn;
   var volumeBtn, volumeRange, timeEl, timeCurrentEl, timeTotalEl;
-  var returnHintEl, elsewhereEl, audioEl;
+  var returnHintEl, elsewhereBtn, elsewhereTextEl, platformsEl, audioEl;
   var tracks = [];
   var currentIdx = 0;
   var stoneImage = null;
@@ -57,6 +57,9 @@ Affogato.Player = (function () {
       '<span class="return-hint__arrow" aria-hidden="true"></span>' +
       '<span class="return-hint__label">вернуться</span>';
     document.body.appendChild(returnHintEl);
+
+    playerShellEl = document.createElement('div');
+    playerShellEl.className = 'player-shell';
 
     playerEl = document.createElement('div');
     playerEl.id = 'player';
@@ -114,12 +117,29 @@ Affogato.Player = (function () {
     timeEl = playerEl.querySelector('.player__time');
     timeCurrentEl = playerEl.querySelector('.player__time-current');
     timeTotalEl = playerEl.querySelector('.player__time-total');
-    document.body.appendChild(playerEl);
+    playerShellEl.appendChild(playerEl);
 
-    elsewhereEl = document.createElement('div');
-    elsewhereEl.className = 'listen-elsewhere';
-    elsewhereEl.textContent = 'слушать в другом месте';
-    document.body.appendChild(elsewhereEl);
+    elsewhereBtn = document.createElement('button');
+    elsewhereBtn.className = 'listen-elsewhere';
+    elsewhereBtn.type = 'button';
+    elsewhereBtn.setAttribute('aria-expanded', 'false');
+    elsewhereBtn.setAttribute('aria-controls', 'listen-platforms');
+
+    elsewhereTextEl = document.createElement('span');
+    elsewhereTextEl.textContent = 'слушать в другом месте';
+    elsewhereBtn.appendChild(elsewhereTextEl);
+    playerShellEl.appendChild(elsewhereBtn);
+
+    platformsEl = document.createElement('nav');
+    platformsEl.id = 'listen-platforms';
+    platformsEl.className = 'listen-platforms';
+    platformsEl.setAttribute('aria-label', 'Слушать на других площадках');
+    platformsEl.setAttribute('aria-hidden', 'true');
+    platformsEl.inert = true;
+    buildPlatforms();
+    playerShellEl.appendChild(platformsEl);
+
+    document.body.appendChild(playerShellEl);
 
     audioEl = document.createElement('audio');
     audioEl.id = 'player-audio';
@@ -127,6 +147,42 @@ Affogato.Player = (function () {
     document.body.appendChild(audioEl);
 
     restoreVolume();
+  }
+
+  function buildPlatforms() {
+    var platforms = playerCfg().platforms || [];
+
+    platforms.forEach(function (platform) {
+      var link = document.createElement('a');
+      link.className = 'listen-platforms__link';
+      link.href = platform.url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+
+      if (platform.icon) {
+        var iconWrap = document.createElement('span');
+        iconWrap.className = 'listen-platforms__icon-wrap';
+        if (platform.iconFit === 'cover') {
+          iconWrap.classList.add('listen-platforms__icon-wrap--cover');
+        }
+
+        var icon = document.createElement('img');
+        icon.className = 'listen-platforms__icon';
+        icon.src = platform.icon;
+        icon.alt = '';
+        icon.loading = 'lazy';
+        icon.decoding = 'async';
+        iconWrap.appendChild(icon);
+        link.appendChild(iconWrap);
+      }
+
+      var name = document.createElement('span');
+      name.className = 'listen-platforms__name';
+      name.textContent = platform.name;
+      link.appendChild(name);
+
+      platformsEl.appendChild(link);
+    });
   }
 
   // ─────────────────────────────────────────── volume ──
@@ -217,6 +273,7 @@ Affogato.Player = (function () {
     nextBtn.addEventListener('click', nextTrack);
     volumeBtn.addEventListener('click', onMuteClick);
     volumeRange.addEventListener('input', onRangeInput);
+    elsewhereBtn.addEventListener('click', togglePlatforms);
 
     audioEl.addEventListener('play', updatePlayButton);
     audioEl.addEventListener('pause', updatePlayButton);
@@ -229,6 +286,33 @@ Affogato.Player = (function () {
     window.addEventListener('wheel', onWheel, { passive: false });
     window.addEventListener('touchstart', onTouchStart, { passive: true });
     window.addEventListener('touchmove', onTouchMove, { passive: true });
+  }
+
+  function togglePlatforms() {
+    if (mode !== 'open') return;
+    setPlatformsOpen(!playerShellEl.classList.contains('is-platforms-open'));
+  }
+
+  function setPlatformsOpen(isOpen) {
+    playerShellEl.classList.toggle('is-platforms-open', isOpen);
+    elsewhereBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    elsewhereTextEl.textContent = isOpen ? 'вернуть плеер' : 'слушать в другом месте';
+    playerEl.inert = isOpen;
+    platformsEl.inert = !isOpen;
+    if (isOpen) {
+      playerEl.setAttribute('aria-hidden', 'true');
+      platformsEl.removeAttribute('aria-hidden');
+    } else {
+      playerEl.removeAttribute('aria-hidden');
+      platformsEl.setAttribute('aria-hidden', 'true');
+    }
+
+    if (isOpen) {
+      pauseAudio();
+      hideTitle();
+    } else if (hasStartedPlayback) {
+      showTitle();
+    }
   }
 
   function onWheel(e) {
@@ -295,6 +379,7 @@ Affogato.Player = (function () {
   function closePlayer() {
     if (mode !== 'open') return;
     mode = 'ascending';
+    setPlatformsOpen(false);
     pauseAudio();
     hideTitle();
     hideSiteOverlays();
