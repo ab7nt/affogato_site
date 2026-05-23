@@ -51,10 +51,14 @@ Affogato.Transit = (function () {
   function resize() {
     var perf = Affogato.Config.performance || {};
     var dpr = Math.min(window.devicePixelRatio || 1, perf.maxDpr || 1.5);
-    canvas.width = Math.round(window.innerWidth * dpr);
-    canvas.height = Math.round(window.innerHeight * dpr);
-    canvas.style.width = window.innerWidth + 'px';
-    canvas.style.height = window.innerHeight + 'px';
+    // Размеры берём из стабильного Viewport — иначе iOS Safari при показе/
+    // скрытии адресной строки пересоздаёт canvas и весь фон мигает.
+    var w = Affogato.Viewport.width();
+    var h = Affogato.Viewport.height();
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
     ctx.imageSmoothingQuality = 'high';
     if (!imageMaskCanvas) {
       imageMaskCanvas = document.createElement('canvas');
@@ -359,7 +363,7 @@ Affogato.Transit = (function () {
     canvas = canvasEl;
     ctx = canvas.getContext('2d');
     resize();
-    window.addEventListener('resize', resize);
+    Affogato.Viewport.onChange(resize);
   }
 
   // start(direction, durationSec, opts):

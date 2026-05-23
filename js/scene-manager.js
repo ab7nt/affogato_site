@@ -5,7 +5,7 @@ window.Affogato = window.Affogato || {};
 
 Affogato.SceneManager = (function () {
   var scenes = [];
-  var viewportH = window.innerHeight;
+  var viewportH = Affogato.Viewport.height();
 
   function register(scene) {
     scenes.push(scene);
@@ -49,11 +49,13 @@ Affogato.SceneManager = (function () {
 
   // Высота body задаёт диапазон нативного скролла:
   // суммарная длина сцен и переходов + один экран.
+  // Размеры берём из стабильного Affogato.Viewport, иначе на iOS Safari
+  // body «дышит» вместе с адресной строкой и сцены прыгают на каждом скролле.
   function layout() {
-    viewportH = window.innerHeight;
+    viewportH = Affogato.Viewport.height();
     document.body.style.height = (totalScrollPx() + viewportH) + 'px';
     for (var i = 0; i < scenes.length; i++) {
-      if (scenes[i].resize) scenes[i].resize(window.innerWidth, viewportH);
+      if (scenes[i].resize) scenes[i].resize(Affogato.Viewport.width(), viewportH);
     }
   }
 

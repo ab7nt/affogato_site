@@ -12,7 +12,6 @@ Affogato.SmoothScroll = (function () {
   var ignoreProgrammaticScroll = false;
   var nativeScrollBlocked = false;
   var scrollReadyAt = 0; // grace-период после разблокировки — игнор отложенных scroll-event
-  var lockedScrollY = 0; // nativeY на момент блокировки — для восстановления при unblock
 
   function readTarget() {
     if (ignoreProgrammaticScroll) return;
@@ -30,46 +29,22 @@ Affogato.SmoothScroll = (function () {
     if (e.cancelable) e.preventDefault();
   }
 
-  // position:fixed на body — единственный способ мгновенно остановить идущую
-  // touch-инерцию в iOS Safari. touch-action: none и preventDefault на touchmove
-  // блокируют только новые жесты; уже стартовавшая инерция идёт без touchmove
-  // и преспокойно конфликтует с нашим autoTransition.
   function blockNativeScroll() {
     if (nativeScrollBlocked) return;
     nativeScrollBlocked = true;
-    lockedScrollY = window.scrollY || window.pageYOffset || 0;
-    var bodyStyle = document.body.style;
-    bodyStyle.position = 'fixed';
-    bodyStyle.top = (-lockedScrollY) + 'px';
-    bodyStyle.left = '0';
-    bodyStyle.right = '0';
-    bodyStyle.width = '100%';
     document.body.classList.add('scroll-locked');
     window.addEventListener('touchmove', preventNativeScroll, { passive: false });
     window.addEventListener('wheel', preventNativeScroll, { passive: false });
   }
 
-  function unblockNativeScroll(restoreToY) {
+  function unblockNativeScroll() {
     if (!nativeScrollBlocked) return;
     nativeScrollBlocked = false;
-    var bodyStyle = document.body.style;
-    bodyStyle.position = '';
-    bodyStyle.top = '';
-    bodyStyle.left = '';
-    bodyStyle.right = '';
-    bodyStyle.width = '';
     document.body.classList.remove('scroll-locked');
     window.removeEventListener('touchmove', preventNativeScroll);
     window.removeEventListener('wheel', preventNativeScroll);
-
-    // Восстанавливаем nativeY на конечной позиции (после автоперехода — `to`).
-    var y = typeof restoreToY === 'number' ? restoreToY : lockedScrollY;
-    ignoreProgrammaticScroll = true;
-    window.scrollTo(0, y);
-    ignoreProgrammaticScroll = false;
-
-    // iOS Safari присылает scroll-event с задержкой — после restore может
-    // прилететь «эхо» со старой позицией. Игнорируем такие события ~280мс.
+    // iOS Safari присылает scroll-event с задержкой после syncNativeScroll —
+    // отсекаем «эхо» события ~280мс.
     scrollReadyAt = performance.now() + 280;
   }
 
@@ -106,7 +81,8 @@ Affogato.SmoothScroll = (function () {
     };
     current = from;
     target = from;
-    blockNativeScroll(); // мгновенно гасит идущую touch-инерцию iOS
+    blockNativeScroll();
+    syncNativeScroll(from);
   }
 
   function scrollTo(value, durationSec) {
@@ -118,22 +94,20 @@ Affogato.SmoothScroll = (function () {
     autoTransition = null;
     current = value;
     target = value;
-    if (nativeScrollBlocked) {
-      unblockNativeScroll(value);
-    } else {
-      syncNativeScroll(value);
-    }
+    unblockNativeScroll();
+    syncNativeScroll(value);
   }
 
   function lockAtCurrent() {
     lockedAt = current;
     target = current;
     blockNativeScroll();
+    syncNativeScroll(current);
   }
 
   function unlock() {
     lockedAt = null;
-    unblockNativeScroll(current);
+    unblockNativeScroll();
     readTarget();
   }
 
@@ -192,8 +166,8 @@ Affogato.SmoothScroll = (function () {
         current = autoTransition.to;
         target = autoTransition.to;
         autoTransition = null;
-        // unblock сам восстановит nativeY на `current` — отдельный sync не нужен.
-        unblockNativeScroll(current);
+        unblockNativeScroll();
+        syncNativeScroll(current);
         return current;
       }
 

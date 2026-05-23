@@ -16,7 +16,7 @@
   }
 
   function updateTopNav(scrollPx) {
-    var fadeDistance = window.innerHeight * 0.28;
+    var fadeDistance = Affogato.Viewport.height() * 0.28;
     var reveal = Affogato.TitleOverlay.getAlbumReveal();
     var opacity = reveal * Math.max(0, 1 - scrollPx / fadeDistance);
     topNav.style.opacity = opacity.toFixed(3);
@@ -24,7 +24,7 @@
   }
 
   function updateScrollHint(scrollPx, finalSceneStartPx) {
-    var fadeDistance = window.innerHeight * 0.28;
+    var fadeDistance = Affogato.Viewport.height() * 0.28;
     var beforeFinal = Math.max(0, Math.min(1, (finalSceneStartPx - scrollPx) / fadeDistance));
     scrollHint.style.opacity = beforeFinal.toFixed(3);
     scrollHint.style.pointerEvents = beforeFinal > 0.08 ? 'auto' : 'none';
@@ -118,7 +118,7 @@
     document.body.classList.add('ready');
     loader.classList.add('hidden');
 
-    window.addEventListener('resize', function () { SM.layout(); });
+    Affogato.Viewport.onChange(function () { SM.layout(); });
 
     var lastFrameAt = 0;
     function loop(timestamp) {

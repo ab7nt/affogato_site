@@ -11,8 +11,9 @@ Affogato.Scenes.Diving = (function () {
     // Ограничиваем DPR: исходники 1280px, выше 2x прироста детализации нет.
     var perf = Affogato.Config.performance || {};
     var dpr = Math.min(window.devicePixelRatio || 1, perf.maxDpr || 1.5);
-    var w = window.innerWidth;
-    var h = window.innerHeight;
+    // Размеры из стабильного Viewport (см. js/viewport.js) — без дрожания UI-bar.
+    var w = Affogato.Viewport.width();
+    var h = Affogato.Viewport.height();
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(h * dpr);
     canvas.style.width = w + 'px';
