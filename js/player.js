@@ -15,6 +15,7 @@ Affogato.Player = (function () {
   var touchStartY = 0;
   var titleCrossfadeTimer = null;
   var hasStartedPlayback = false;
+  var wantsPlayback = false;
 
   var STORAGE_VOLUME = 'affogato.volume';
   var STORAGE_MUTED = 'affogato.muted';
@@ -326,10 +327,12 @@ Affogato.Player = (function () {
     if (!tracks.length) return;
     if (audioEl.paused) {
       ensureSrc();
-      audioEl.play();
+      wantsPlayback = true;
+      playAudio();
       hasStartedPlayback = true;
       showTitle();
     } else {
+      wantsPlayback = false;
       audioEl.pause();
     }
   }
@@ -347,14 +350,19 @@ Affogato.Player = (function () {
   }
 
   function onTrackChanged() {
-    var wasPlaying = !audioEl.paused;
+    var shouldResume = wantsPlayback || !audioEl.paused;
     audioEl.src = tracks[currentIdx].audio;
+    audioEl.load();
     timeEl.classList.remove('has-values');
     timeCurrentEl.textContent = '--:--';
     timeTotalEl.textContent = '--:--';
-    if (wasPlaying) audioEl.play();
+    if (shouldResume) {
+      wantsPlayback = true;
+      hasStartedPlayback = true;
+      playAudio();
+    }
     if (titleEl.classList.contains('visible')) crossfadeTitle();
-    else if (wasPlaying) showTitle();
+    else if (shouldResume) showTitle();
     else swapTitleSilently();
   }
 
@@ -362,7 +370,25 @@ Affogato.Player = (function () {
     if (!audioEl.src) audioEl.src = tracks[currentIdx].audio;
   }
 
+  function playAudio() {
+    var playPromise = audioEl.play();
+    if (playPromise && typeof playPromise.catch === 'function') {
+      playPromise.catch(function () {
+        var retryOnCanPlay = function () {
+          audioEl.removeEventListener('canplay', retryOnCanPlay);
+          if (mode !== 'open' || !wantsPlayback) return;
+          var retryPromise = audioEl.play();
+          if (retryPromise && typeof retryPromise.catch === 'function') {
+            retryPromise.catch(updatePlayButton);
+          }
+        };
+        audioEl.addEventListener('canplay', retryOnCanPlay);
+      });
+    }
+  }
+
   function pauseAudio() {
+    wantsPlayback = false;
     if (audioEl && !audioEl.paused) audioEl.pause();
   }
 
@@ -396,6 +422,7 @@ Affogato.Player = (function () {
 
   function onTrackEnded() {
     // Без auto-next: останавливаемся на месте, кнопка возвращается в play.
+    wantsPlayback = false;
     audioEl.currentTime = 0;
     onTimeUpdate();
     updatePlayButton();
