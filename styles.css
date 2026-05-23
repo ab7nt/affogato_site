@@ -165,7 +165,7 @@ body.ready .scroll-hint {
   pointer-events: none;
 }
 
-.return-ascent {
+.transit-overlay {
   position: fixed;
   inset: 0;
   z-index: 20;
@@ -177,7 +177,318 @@ body.ready .scroll-hint {
   transition: opacity 0.25s ease;
 }
 
-.return-ascent.visible {
+.transit-overlay.visible {
+  opacity: 1;
+}
+
+/* В режиме плеера титры, плеер и навигация поднимаются над transit-overlay,
+   чтобы DOM-элементы рисовались поверх canvas-фона со стоп-кадром. */
+body.in-player-mode .titles {
+  z-index: 21;
+}
+
+.player {
+  position: fixed;
+  left: 50%;          /* горизонтально по центру */
+  top: 28vh;          /* под названием группы — крути top тут под нужное место */
+  z-index: 22;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.4rem;
+  transform: translateX(-50%);
+  color: rgba(232, 236, 229, 0.86);
+  font-family: 'Poiret One', system-ui, sans-serif;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+  will-change: opacity;
+}
+
+body.in-player-mode .player {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.player__title {
+  min-height: 1.4em;
+  font-size: clamp(1.5rem, 3vw, 2.6rem);
+  letter-spacing: 0.04em;
+  text-align: center;
+  line-height: 1.1;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.player__title.visible {
+  opacity: 1;
+}
+
+.player__controls {
+  display: flex;
+  align-items: center;
+  gap: 2.4rem;
+}
+
+.player__btn {
+  position: relative;
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.78;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+}
+
+.player__btn:hover {
+  opacity: 1;
+}
+
+.player__btn:active {
+  transform: scale(0.94);
+}
+
+.player__btn:focus-visible {
+  outline: 1px solid rgba(232, 236, 229, 0.6);
+  outline-offset: 4px;
+}
+
+.player__btn--prev,
+.player__btn--next {
+  width: 1.8rem;
+  height: 1.8rem;
+}
+
+.player__btn--prev svg,
+.player__btn--next svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Кнопка play/pause: иконки лежат друг на друге и кроссфейдятся с лёгким масштабом. */
+.player__btn--play {
+  width: 2.4rem;
+  height: 2.4rem;
+}
+
+.player__icon {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: 0;
+  transform: scale(0.7);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.player__btn--play .player__icon--play {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.player__btn--play.is-playing .player__icon--play {
+  opacity: 0;
+  transform: scale(0.7);
+}
+
+.player__btn--play.is-playing .player__icon--pause {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.player__meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  min-height: 1.2rem;
+  color: rgba(232, 236, 229, 0.76);
+}
+
+.player__volume {
+  position: relative;
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.72;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+}
+
+.player__volume:hover {
+  opacity: 0.96;
+}
+
+.player__volume:active {
+  transform: scale(0.94);
+}
+
+.player__volume:focus-visible {
+  outline: 1px solid rgba(232, 236, 229, 0.6);
+  outline-offset: 4px;
+}
+
+.player__volume .player__icon--volume {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.player__volume.is-muted .player__icon--volume {
+  opacity: 0;
+  transform: scale(0.7);
+}
+
+.player__volume.is-muted .player__icon--muted {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.player__volume-range {
+  width: clamp(80px, 9vw, 100px);
+  height: 1rem;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  color: currentColor;
+  cursor: pointer;
+}
+
+.player__volume-range:focus {
+  outline: none;
+}
+
+.player__volume-range:focus-visible {
+  outline: 1px solid rgba(232, 236, 229, 0.46);
+  outline-offset: 4px;
+}
+
+.player__volume-range::-webkit-slider-runnable-track {
+  height: 1px;
+  border-radius: 999px;
+  background: rgba(232, 236, 229, 0.38);
+}
+
+.player__volume-range::-webkit-slider-thumb {
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-top: calc((1px - 0.45rem) / 2);
+  border: 0;
+  border-radius: 50%;
+  -webkit-appearance: none;
+  background: rgba(232, 236, 229, 0.72);
+}
+
+.player__volume-range::-moz-range-track {
+  height: 1px;
+  border-radius: 999px;
+  background: rgba(232, 236, 229, 0.38);
+}
+
+.player__volume-range::-moz-range-thumb {
+  width: 0.45rem;
+  height: 0.45rem;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(232, 236, 229, 0.72);
+}
+
+.player__time {
+  min-width: 5.6rem;
+  color: rgba(232, 236, 229, 0.58);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  line-height: 1;
+  text-align: right;
+  opacity: 0.58;
+  transition: opacity 0.45s ease, color 0.45s ease;
+}
+
+.player__time.has-values {
+  color: rgba(232, 236, 229, 0.66);
+  opacity: 1;
+}
+
+.return-hint {
+  position: fixed;
+  left: 50%;
+  top: clamp(1.2rem, 4vw, 2.4rem);
+  z-index: 22;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  color: rgba(232, 236, 229, 0.68);
+  font-family: 'Poiret One', system-ui, sans-serif;
+  font-size: clamp(1rem, 2vw, 1.3rem);
+  line-height: 1;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.45);
+  transform: translateX(-50%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+  cursor: pointer;
+  will-change: opacity;
+}
+
+body.in-player-mode .return-hint {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.return-hint__arrow {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-left: 1px solid currentColor;
+  border-top: 1px solid currentColor;
+  transform: rotate(45deg);
+  animation: return-hint-arrow 1.8s ease-in-out infinite;
+}
+
+@keyframes return-hint-arrow {
+  0%,
+  100% {
+    opacity: 0.32;
+    translate: 0 0;
+  }
+
+  50% {
+    opacity: 0.9;
+    translate: 0 -0.35rem;
+  }
+}
+
+.listen-elsewhere {
+  position: fixed;
+  left: 50%;
+  bottom: clamp(0.8rem, 2.4vw, 1.6rem);
+  z-index: 22;
+  color: rgba(232, 236, 229, 0.4);
+  font-family: 'Poiret One', system-ui, sans-serif;
+  font-size: clamp(0.85rem, 1.5vw, 1.05rem);
+  letter-spacing: 0.05em;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.3);
+  transform: translateX(-50%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+  white-space: nowrap;
+}
+
+body.in-player-mode .listen-elsewhere {
   opacity: 1;
 }
 

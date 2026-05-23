@@ -86,9 +86,11 @@ Affogato.Scenes.createPolaroid = function (item, index) {
       el.style.display = '';
 
       var offset = offsetFrac || 0;
-      // При входе карточки (offset > 0) глубину плавно ведём от предыдущей карточки —
-      // подводный свет меняется без скачка на стыке сцен.
-      var effDepth = offset > 0 ? Math.max(0, depth - depthStep * offset) : depth;
+      // При входе карточки (offset > 0) интерполируем глубину от предыдущей сцены
+      // к собственной: свет меняется без скачка. Для первой карточки «предыдущая»
+      // считается глубокой (1) — иначе верх воды резко светлеет на стыке с погружением.
+      var prevDepth = index === 0 ? 1 : depth - depthStep;
+      var effDepth = offset > 0 ? (prevDepth + (depth - prevDepth) * (1 - offset)) : depth;
       Affogato.UnderwaterBg.render(ctx, canvas.width, canvas.height, effDepth);
 
       var elapsedSec = (performance.now() - shownAt) / 1000;

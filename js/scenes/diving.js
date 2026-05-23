@@ -26,10 +26,9 @@ Affogato.Scenes.Diving = (function () {
   }
 
   // Рисует кадр cover'ом внутри панели сцены. offsetFrac — вертикальное смещение
-  // панели в долях экрана (0 — на месте, -1 — целиком ушла вверх). Панель ровно
-  // в высоту экрана, клип обрезает излишек cover-перекрытия — при переходе сцены
-  // стыкуются без зазора и нахлёста.
-  function drawFrame(img, offsetFrac) {
+  // панели в долях экрана (0 — на месте, -1 — целиком ушла вверх). fadeOut — плотность
+  // затемнения поверх кадра (0..1), уводит конец погружения в фейд перед переходом.
+  function drawFrame(img, offsetFrac, fadeOut) {
     var f = Affogato.Config.frames;
     var cw = canvas.width, ch = canvas.height;
     var top = Math.round(offsetFrac * ch);
@@ -40,6 +39,10 @@ Affogato.Scenes.Diving = (function () {
     ctx.rect(0, top, cw, ch);
     ctx.clip();
     ctx.drawImage(img, (cw - dw) / 2, top + (ch - dh) / 2, dw, dh);
+    if (fadeOut > 0) {
+      ctx.fillStyle = 'rgba(0,0,0,' + Math.min(1, fadeOut).toFixed(3) + ')';
+      ctx.fillRect(0, top, cw, ch);
+    }
     ctx.restore();
   }
 
@@ -75,7 +78,15 @@ Affogato.Scenes.Diving = (function () {
       if (idx > count - 1) idx = count - 1;
       lastFrame = idx;
 
-      drawFrame(frames[idx], offsetFrac || 0);
+      // Уводим хвост погружения в темноту, чтобы переход к карточкам не вспыхивал.
+      var fadeStart = cfg.fadeOutStart != null ? cfg.fadeOutStart : 0.85;
+      var fadeMax = cfg.fadeOutMax != null ? cfg.fadeOutMax : 0.9;
+      var fade = 0;
+      if (p > fadeStart && fadeStart < 1) {
+        fade = ((p - fadeStart) / (1 - fadeStart)) * fadeMax;
+      }
+
+      drawFrame(frames[idx], offsetFrac || 0, fade);
       Affogato.TitleOverlay.render(localProgress, offsetFrac || 0);
     },
   };

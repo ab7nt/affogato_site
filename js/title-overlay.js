@@ -8,6 +8,7 @@ Affogato.TitleOverlay = (function () {
   var albumBaseOpacity = 0;
   var albumRevealValue = 0;
   var finalFade = 1;
+  var staticMode = false; // на время плеера титры замораживаются в «приглушённом» конце
 
   function init() {
     groupEl = document.getElementById('title-group');
@@ -59,6 +60,7 @@ Affogato.TitleOverlay = (function () {
 
   function render(sceneProgress, offsetFrac) {
     if (!groupEl || !albumEl) return;
+    if (staticMode) return; // в режиме плеера титры держатся в конечном состоянии
 
     var cfg = Affogato.Config.scenes.diving.titles;
     var now = performance.now();
@@ -99,7 +101,31 @@ Affogato.TitleOverlay = (function () {
     albumBaseOpacity = 0;
     albumRevealValue = 0;
     finalFade = 1;
+    staticMode = false;
     hide();
+  }
+
+  // Замораживает титры в их «конечном приглушённом» виде — для режима плеера.
+  // Позиции и opacity берутся из titles.player.* (если задано) либо из endTopVH/opacityEnd
+  // карточечного состояния. В config регулируется верх «АФФОГАТО» под плеер.
+  function setStatic(active) {
+    staticMode = !!active;
+    if (!staticMode || !groupEl || !albumEl) return;
+    var cfg = Affogato.Config.scenes.diving.titles;
+    var groupCfg = resolveItemConfig(cfg, 'group');
+    var albumCfg = resolveItemConfig(cfg, 'album');
+    var p = cfg.player || {};
+    var groupTop = p.groupTopVH != null ? p.groupTopVH : groupCfg.endTopVH;
+    var albumTop = p.albumTopVH != null ? p.albumTopVH : albumCfg.endTopVH;
+    var groupOp = p.groupOpacity != null ? p.groupOpacity : groupCfg.opacityEnd;
+    var albumOp = p.albumOpacity != null ? p.albumOpacity : albumCfg.opacityEnd;
+    finalFade = 1;
+    groupBaseOpacity = groupOp;
+    albumBaseOpacity = albumOp;
+    groupEl.style.top = groupTop + 'vh';
+    albumEl.style.top = albumTop + 'vh';
+    applyOpacity(groupEl, groupBaseOpacity);
+    applyOpacity(albumEl, albumBaseOpacity);
   }
 
   return {
@@ -109,5 +135,6 @@ Affogato.TitleOverlay = (function () {
     reset: reset,
     getAlbumReveal: getAlbumReveal,
     setFinalFade: setFinalFade,
+    setStatic: setStatic,
   };
 })();

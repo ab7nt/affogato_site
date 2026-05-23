@@ -5,7 +5,7 @@
 
   var loader = document.getElementById('loader');
   var loaderProgress = document.getElementById('loader-progress');
-  var returnAscent = document.getElementById('return-ascent');
+  var transitOverlay = document.getElementById('transit-overlay');
   var topNav = document.getElementById('top-nav');
   var scrollHint = document.getElementById('scroll-hint');
   var canvas = document.getElementById('stage');
@@ -38,7 +38,7 @@
     var stoneVideo = Affogato.Scenes.createStoneVideo(Affogato.Config.scenes.stoneVideo);
 
     Affogato.TitleOverlay.init();
-    Affogato.ReturnAscent.init(returnAscent);
+    Affogato.Transit.init(transitOverlay);
     diving.init(canvas, { frames: frames });
     songScenes.forEach(function (scene) { scene.init(canvas); });
     stoneVideo.init(canvas);
@@ -46,6 +46,12 @@
     songScenes.forEach(function (scene) { SM.register(scene); });
     SM.register(stoneVideo);
     SM.layout(); // задаёт высоту body и размер canvas
+
+    // Локальный плеер: «послушать» в верхней навигации перехватывается.
+    var listenLink = topNav ? topNav.querySelector('a') : null;
+    if (listenLink && Affogato.Player) {
+      Affogato.Player.init({ triggerEl: listenLink, frames: frames });
+    }
 
     window.scrollTo(0, 0);
     Affogato.SmoothScroll.init({ ease: Affogato.Config.scroll.ease });
@@ -65,7 +71,10 @@
     stoneVideo.onEnded(function () {
       var returnMs = Affogato.Config.scroll.returnToTopSec * 1000;
       isReturningToStart = true;
-      Affogato.ReturnAscent.start(Affogato.Config.scroll.returnToTopSec, stoneVideo.getVideoElement(), frames);
+      Affogato.Transit.start('up', Affogato.Config.scroll.returnToTopSec, {
+        videoEl: stoneVideo.getVideoElement(),
+        frames: frames,
+      });
       window.setTimeout(function () {
         Affogato.SmoothScroll.jumpTo(0);
         Affogato.TitleOverlay.reset();
@@ -74,7 +83,7 @@
         SM.render(0);
       }, Math.max(120, returnMs - 90));
       window.setTimeout(function () {
-        Affogato.ReturnAscent.stop();
+        Affogato.Transit.stop();
         SM.render(0);
         isReturningToStart = false;
       }, returnMs + 240);
@@ -89,7 +98,11 @@
     window.addEventListener('resize', function () { SM.layout(); });
 
     function loop() {
-      if (isReturningToStart) {
+      // На время плеера и финального подъёма главный цикл стоит: иначе
+      // updateTopNav/updateScrollHint перезаписывают inline opacity=0 и top-nav
+      // успевает плавно «вернуться» поверх угасающего transit-canvas.
+      var playerActive = Affogato.Player && Affogato.Player.isActive();
+      if (isReturningToStart || playerActive) {
         requestAnimationFrame(loop);
         return;
       }

@@ -179,5 +179,16 @@ Affogato.UnderwaterBg = (function () {
     drawBottomGlow(ctx, w, h, performance.now() / 1000, level);
   }
 
-  return { render: render, renderBottomGlow: renderBottomGlow };
+  // Только взвесь — для статичного фона плеера (стоп-кадр со дна + лёгкая взвесь).
+  function renderParticles(ctx, w, h) {
+    var cfg = Affogato.Config.underwater;
+    if (!particles) particles = buildParticles(cfg.particles.count);
+    drawParticles(ctx, w, h, performance.now() / 1000, cfg.particles);
+  }
+
+  return {
+    render: render,
+    renderBottomGlow: renderBottomGlow,
+    renderParticles: renderParticles,
+  };
 })();
