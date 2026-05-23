@@ -716,13 +716,28 @@ body.in-player-mode .return-hint {
   will-change: opacity, transform;
 }
 
+/* Мягкая «толща воды» снизу — гармонирует с bottomGlow и градиентом воды
+   на остальных сценах. Видео не упирается в край экрана, а тонет в темноте. */
+.stone-video-scene::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 38vh;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.58) 0%, rgba(0, 0, 0, 0) 100%);
+  pointer-events: none;
+}
+
+/* inset:0 без 108vh-трюка: иначе DOM-video и canvas-рисунок (transit-overlay)
+   получают разный cover-коэффициент и при автовозврате на стыке маски
+   видна «полоска дна» — переход от одного кропа к другому. */
 .stone-video,
 .stone-video__placeholder {
   position: absolute;
-  top: -4vh;
-  left: -4vw;
-  width: 108vw;
-  height: 108vh;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   object-position: center center;
 }
