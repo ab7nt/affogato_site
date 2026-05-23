@@ -27,6 +27,8 @@
     var fadeDistance = window.innerHeight * 0.28;
     var beforeFinal = Math.max(0, Math.min(1, (finalSceneStartPx - scrollPx) / fadeDistance));
     scrollHint.style.opacity = beforeFinal.toFixed(3);
+    scrollHint.style.pointerEvents = beforeFinal > 0.08 ? 'auto' : 'none';
+    scrollHint.tabIndex = beforeFinal > 0.08 ? 0 : -1;
   }
 
   function start(frames) {
@@ -52,6 +54,27 @@
     if (listenLink && Affogato.Player) {
       Affogato.Player.init({ triggerEl: listenLink, frames: frames });
     }
+
+    function getForwardTransitionTarget(scrollPx) {
+      var finalIndex = SM.sceneIndex('stoneVideo');
+      var edgeEps = 2;
+      for (var i = 0; i < finalIndex; i++) {
+        var range = SM.transitionRange(i);
+        if (range && scrollPx < range.end - edgeEps) return range.end;
+      }
+      return null;
+    }
+
+    scrollHint.addEventListener('click', function () {
+      var playerActive = Affogato.Player && Affogato.Player.isActive();
+      if (isReturningToStart || playerActive) return;
+      var state = Affogato.SmoothScroll.getState ? Affogato.SmoothScroll.getState() : null;
+      if (state && state.autoTransitioning) return;
+      var current = state ? state.current : (window.scrollY || window.pageYOffset || 0);
+      var target = getForwardTransitionTarget(current);
+      if (target === null) return;
+      Affogato.SmoothScroll.scrollTo(target, Affogato.Config.scroll.hintTransitionSec || 1.55);
+    });
 
     window.scrollTo(0, 0);
     Affogato.SmoothScroll.init({ ease: Affogato.Config.scroll.ease });

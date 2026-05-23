@@ -65,6 +65,9 @@ body.ready #stage {
   flex-direction: column;
   align-items: center;
   gap: 0.55rem;
+  padding: 0;
+  border: 0;
+  background: none;
   color: rgba(232, 236, 229, 0.68);
   font-family: 'Poiret One', system-ui, sans-serif;
   font-size: clamp(1rem, 2vw, 1.3rem);
@@ -74,11 +77,21 @@ body.ready #stage {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.6s ease;
+  cursor: pointer;
   will-change: opacity;
 }
 
 body.ready .scroll-hint {
   opacity: 1;
+}
+
+.scroll-hint:hover {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.scroll-hint:focus-visible {
+  outline: 1px solid rgba(232, 236, 229, 0.52);
+  outline-offset: 0.45rem;
 }
 
 .scroll-hint__arrow {
