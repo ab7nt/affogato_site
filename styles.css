@@ -181,9 +181,10 @@ body.ready .scroll-hint {
   opacity: 1;
 }
 
-/* В режиме плеера титры, плеер и навигация поднимаются над transit-overlay,
-   чтобы DOM-элементы рисовались поверх canvas-фона со стоп-кадром. */
-body.in-player-mode .titles {
+/* В режиме плеера и во время перехода титры остаются над transit-overlay,
+   чтобы canvas-фон и DOM-текст двигались как один слой. */
+body.in-player-mode .titles,
+body.player-transitioning .titles {
   z-index: 21;
 }
 

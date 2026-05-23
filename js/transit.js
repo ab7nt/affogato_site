@@ -15,6 +15,7 @@ Affogato.Transit = (function () {
   var divingFrames = null;
   var phase = 'idle'; // 'idle' | 'animating' | 'idle-after-descent' | 'finished'
   var lastIdleDrawAt = 0;
+  var onProgress = null;
 
   // Опорные точки фаз для 'up' (как в исходной всплытой анимации):
   // 0…STONE_END — камень уезжает вверх; STONE_END…WATER_END — тёмная вода;
@@ -110,21 +111,15 @@ Affogato.Transit = (function () {
 
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, w, h);
-    var dim = 1 - forwardness;
-    drawCoverImage(divingFrames[idx], 0, 1, 1,
-      'brightness(' + (0.72 + dim * 0.28).toFixed(3) + ') contrast(0.95) saturate(0.82)');
+    drawCoverImage(divingFrames[idx], 0, 1, 1);
 
-    var veil = ctx.createLinearGradient(0, 0, 0, h);
-    veil.addColorStop(0, 'rgba(0,0,0,' + (0.22 - dim * 0.14).toFixed(3) + ')');
-    veil.addColorStop(1, 'rgba(0,0,0,' + (0.52 - dim * 0.30).toFixed(3) + ')');
-    ctx.fillStyle = veil;
-    ctx.fillRect(0, 0, w, h);
-
-    var surface = ctx.createLinearGradient(0, 0, 0, h * 0.28);
-    surface.addColorStop(0, 'rgba(128,162,170,' + (dim * 0.14).toFixed(3) + ')');
-    surface.addColorStop(1, 'rgba(128,162,170,0)');
-    ctx.fillStyle = surface;
-    ctx.fillRect(0, 0, w, h * 0.28);
+    var fadeStart = cfg.fadeOutStart != null ? cfg.fadeOutStart : 0.85;
+    var fadeMax = cfg.fadeOutMax != null ? cfg.fadeOutMax : 0.9;
+    if (forwardness > fadeStart && fadeStart < 1) {
+      var fade = ((forwardness - fadeStart) / (1 - fadeStart)) * fadeMax;
+      ctx.fillStyle = 'rgba(0,0,0,' + Math.min(1, fade).toFixed(3) + ')';
+      ctx.fillRect(0, 0, w, h);
+    }
   }
 
   // 'up'-фаза: камень уезжает вверх, постепенно теряя яркость.
@@ -214,6 +209,7 @@ Affogato.Transit = (function () {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (direction === 'down') drawDescent(p);
       else drawAscent(p);
+      if (onProgress) onProgress(p, direction);
 
       if (p < 1) {
         raf = requestAnimationFrame(tick);
@@ -251,6 +247,7 @@ Affogato.Transit = (function () {
     stoneSource = opts.videoEl || opts.stoneImage || stoneSource;
     if (opts.videoEl && opts.videoEl.pause) opts.videoEl.pause();
     if (opts.frames) divingFrames = opts.frames;
+    onProgress = typeof opts.onProgress === 'function' ? opts.onProgress : null;
 
     duration = Math.max(0.3, durationSec || 0.8) * 1000;
     startedAt = performance.now();
@@ -275,6 +272,7 @@ Affogato.Transit = (function () {
     raf = null;
     phase = 'idle';
     stoneSource = null;
+    onProgress = null;
     canvas.classList.remove('visible');
   }
 

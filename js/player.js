@@ -268,6 +268,8 @@ Affogato.Player = (function () {
     if (mode !== 'closed') return;
     mode = 'descending';
     hideSiteOverlays();
+    document.body.classList.add('player-transitioning');
+    Affogato.TitleOverlay.beginPlayerTransition('down');
 
     Affogato.SmoothScroll.lockAtCurrent();
 
@@ -275,10 +277,14 @@ Affogato.Player = (function () {
     Affogato.Transit.start('down', dur, {
       stoneImage: stoneImage,
       frames: divingFrames,
+      onProgress: function (p) {
+        Affogato.TitleOverlay.renderPlayerTransition(p);
+      },
     });
 
     window.setTimeout(function () {
       document.body.classList.add('in-player-mode');
+      document.body.classList.remove('player-transitioning');
       Affogato.TitleOverlay.setStatic(true);
       if (hasStartedPlayback) showTitle();
       mode = 'open';
@@ -291,12 +297,17 @@ Affogato.Player = (function () {
     pauseAudio();
     hideTitle();
     hideSiteOverlays();
+    document.body.classList.add('player-transitioning');
+    Affogato.TitleOverlay.beginPlayerTransition('up');
     document.body.classList.remove('in-player-mode');
 
     var dur = playerCfg().ascentSec || 1.2;
     Affogato.Transit.start('up', dur, {
       stoneImage: stoneImage,
       frames: divingFrames,
+      onProgress: function (p) {
+        Affogato.TitleOverlay.renderPlayerTransition(p);
+      },
     });
 
     window.setTimeout(function () {
@@ -304,6 +315,7 @@ Affogato.Player = (function () {
       Affogato.TitleOverlay.reset();
       Affogato.Transit.stop();
       Affogato.SmoothScroll.unlock();
+      document.body.classList.remove('player-transitioning');
       mode = 'closed';
     }, dur * 1000);
   }
