@@ -12,7 +12,12 @@ Affogato.Player = (function () {
   var stoneImage = null;
   var divingFrames = null;
   var mode = 'closed'; // 'closed' | 'descending' | 'open' | 'ascending'
-  var touchStartY = 0;
+  var touchLastY = 0;
+  var returnScrollDebt = 0;
+  var lastReturnScrollAt = 0;
+  var returnPreviewProgress = 0;
+  var returnPreviewTimer = null;
+  var returnPreviewRaf = null;
   var titleCrossfadeTimer = null;
   var hasStartedPlayback = false;
   var wantsPlayback = false;
@@ -282,10 +287,11 @@ Affogato.Player = (function () {
     audioEl.addEventListener('timeupdate', onTimeUpdate);
     audioEl.addEventListener('loadedmetadata', onLoadedMetadata);
 
-    // scroll-up в режиме плеера = выход (как переход в карточках песен).
+    // В режиме плеера скролл не двигает страницу: upward-scroll копится
+    // до порога, чтобы выход ощущался как длинное пробирание через воду.
     window.addEventListener('wheel', onWheel, { passive: false });
     window.addEventListener('touchstart', onTouchStart, { passive: true });
-    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
   }
 
   function togglePlatforms() {
@@ -317,22 +323,114 @@ Affogato.Player = (function () {
 
   function onWheel(e) {
     if (mode !== 'open') return;
-    if (e.deltaY < 0) {
-      e.preventDefault();
-      closePlayer();
-    }
+    e.preventDefault();
+    collectReturnScroll(-e.deltaY);
   }
 
   function onTouchStart(e) {
     if (mode === 'open' && e.touches && e.touches[0]) {
-      touchStartY = e.touches[0].clientY;
+      touchLastY = e.touches[0].clientY;
     }
   }
 
   function onTouchMove(e) {
     if (mode !== 'open' || !e.touches || !e.touches[0]) return;
-    var dy = e.touches[0].clientY - touchStartY;
-    if (dy > 40) closePlayer();
+    if (e.cancelable) e.preventDefault();
+    var y = e.touches[0].clientY;
+    var dy = y - touchLastY;
+    touchLastY = y;
+    collectReturnScroll(dy * 2.2);
+  }
+
+  function collectReturnScroll(amount) {
+    if (mode !== 'open') return;
+    var now = performance.now();
+    if (!lastReturnScrollAt || now - lastReturnScrollAt > 850) {
+      returnScrollDebt = 0;
+    }
+    lastReturnScrollAt = now;
+    cancelReturnPreviewSettle();
+
+    if (amount <= 0) {
+      returnScrollDebt = Math.max(0, returnScrollDebt + amount * 0.7);
+      applyReturnPreview(returnScrollDebt / (playerCfg().returnScrollThreshold || 900));
+      scheduleReturnPreviewSettle();
+      return;
+    }
+
+    returnScrollDebt += amount;
+    var threshold = playerCfg().returnScrollThreshold || 900;
+    if (returnScrollDebt >= threshold) {
+      returnScrollDebt = 0;
+      cancelReturnPreviewSettle();
+      closePlayer();
+      return;
+    }
+
+    applyReturnPreview(returnScrollDebt / threshold);
+    scheduleReturnPreviewSettle();
+  }
+
+  function applyReturnPreview(progress) {
+    returnPreviewProgress = clamp01(progress);
+    if (!Affogato.Transit || !Affogato.Transit.previewAscent) return;
+    Affogato.Transit.previewAscent(returnPreviewProgress * (playerCfg().returnPreviewMax || 0.14), {
+      stoneImage: stoneImage,
+      frames: divingFrames,
+    });
+  }
+
+  function cancelReturnPreviewSettle() {
+    if (returnPreviewTimer) window.clearTimeout(returnPreviewTimer);
+    if (returnPreviewRaf) cancelAnimationFrame(returnPreviewRaf);
+    returnPreviewTimer = null;
+    returnPreviewRaf = null;
+  }
+
+  function scheduleReturnPreviewSettle() {
+    if (returnPreviewTimer) window.clearTimeout(returnPreviewTimer);
+    returnPreviewTimer = window.setTimeout(settleReturnPreview, 180);
+  }
+
+  function easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
+  }
+
+  function settleReturnPreview() {
+    returnPreviewTimer = null;
+    var from = returnPreviewProgress;
+    if (from <= 0) return;
+    var duration = Math.max(0.15, playerCfg().returnPreviewSettleSec || 0.55) * 1000;
+    var startedAt = performance.now();
+
+    function tick(now) {
+      if (mode !== 'open') {
+        returnPreviewRaf = null;
+        return;
+      }
+
+      var p = clamp01((now - startedAt) / duration);
+      applyReturnPreview(from * (1 - easeOutCubic(p)));
+      if (p < 1) {
+        returnPreviewRaf = requestAnimationFrame(tick);
+      } else {
+        returnPreviewRaf = null;
+        returnScrollDebt = 0;
+        lastReturnScrollAt = 0;
+        if (Affogato.Transit && Affogato.Transit.resumeIdleStone) {
+          Affogato.Transit.resumeIdleStone();
+        }
+      }
+    }
+
+    returnPreviewRaf = requestAnimationFrame(tick);
+  }
+
+  function resetReturnGesture() {
+    returnScrollDebt = 0;
+    lastReturnScrollAt = 0;
+    returnPreviewProgress = 0;
+    cancelReturnPreviewSettle();
   }
 
   // ─────────────────────────────────────── open / close ──
@@ -352,6 +450,7 @@ Affogato.Player = (function () {
   function openPlayer() {
     if (mode !== 'closed') return;
     mode = 'descending';
+    resetReturnGesture();
     hideSiteOverlays();
     document.body.classList.add('player-transitioning');
     Affogato.TitleOverlay.beginPlayerTransition('down');
@@ -379,6 +478,7 @@ Affogato.Player = (function () {
   function closePlayer() {
     if (mode !== 'open') return;
     mode = 'ascending';
+    resetReturnGesture();
     setPlatformsOpen(false);
     pauseAudio();
     hideTitle();

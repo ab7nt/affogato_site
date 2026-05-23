@@ -125,6 +125,9 @@ Affogato.Config = {
     stillSrc: 'assets/stone-still.png', // стоп-кадр со дна, фон плеера
     descentSec: 1.2,  // длительность анимации погружения по клику «послушать»
     ascentSec: 1.2,   // держим симметрию: возврат ощущается как обратное погружение
+    returnScrollThreshold: 920, // сколько upward-scroll нужно накопить для выхода из плеера
+    returnPreviewMax: 0.14, // максимальная доля подъёма до реального выхода
+    returnPreviewSettleSec: 0.55, // как быстро preview возвращается, если отпустить скролл
     initialVolume: 0.8, // дефолтная громкость до первого сохранения в localStorage
     platforms: [
       {
