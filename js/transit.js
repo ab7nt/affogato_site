@@ -98,33 +98,6 @@ Affogato.Transit = (function () {
     };
   }
 
-  function drawBottomImageSkirt(img, rect, alpha, filter, strength) {
-    var fade = clamp01(strength);
-    if (fade <= 0) return;
-
-    var iw = img.videoWidth || img.naturalWidth || img.width || canvas.width;
-    var ih = img.videoHeight || img.naturalHeight || img.height || canvas.height;
-    var sourceH = ih * 0.22;
-    var skirtH = Math.min(canvas.height * 0.3, rect.h * 0.24);
-    var overlap = Math.min(canvas.height * 0.08, skirtH * 0.38);
-
-    ctx.save();
-    ctx.globalAlpha = alpha * fade * 0.72;
-    ctx.filter = (filter ? filter + ' ' : '') + 'blur(' + Math.round(canvas.height * 0.018) + 'px)';
-    ctx.drawImage(
-      img,
-      0,
-      ih - sourceH,
-      iw,
-      sourceH,
-      rect.x,
-      rect.y + rect.h - overlap,
-      rect.w,
-      skirtH + overlap
-    );
-    ctx.restore();
-  }
-
   function drawCoverImageWithBottomFade(img, y, scaleExtra, alpha, filter, fadeStrength) {
     if (!isImageReady(img)) return;
     var rect = coverImageRect(img, y, scaleExtra);
@@ -134,11 +107,12 @@ Affogato.Transit = (function () {
       return;
     }
 
-    var fadeHeight = Math.min(canvas.height * 0.46, rect.h * 0.38);
+    // Растушёвка делается чисто масочно (destination-in на offscreen).
+    // Skirt (зеркало нижней полосы с ctx.filter='blur(...)') убран: в iOS Safari
+    // blur у canvas-фильтра не отрабатывает — стык skirt-а виден ровной линией.
+    var fadeHeight = Math.min(canvas.height * 0.52, rect.h * 0.42);
     var fadeStart = rect.y + rect.h - fadeHeight;
     var fadeEnd = rect.y + rect.h;
-
-    drawBottomImageSkirt(img, rect, alpha, filter, fade);
 
     imageMaskCtx.clearRect(0, 0, imageMaskCanvas.width, imageMaskCanvas.height);
     imageMaskCtx.save();
@@ -150,9 +124,13 @@ Affogato.Transit = (function () {
     imageMaskCtx.save();
     imageMaskCtx.globalCompositeOperation = 'destination-in';
 
+    // Кривая чуть «выгнута» к низу: до 35% длины — почти не трогаем,
+    // дальше плавное замедление к полной прозрачности. Без этого линейный
+    // градиент даёт зрительный «коридор» одинаковой плотности.
     var mask = imageMaskCtx.createLinearGradient(0, fadeStart, 0, fadeEnd);
     mask.addColorStop(0, 'rgba(0,0,0,1)');
-    mask.addColorStop(0.42, 'rgba(0,0,0,1)');
+    mask.addColorStop(0.35, 'rgba(0,0,0,0.95)');
+    mask.addColorStop(0.7, 'rgba(0,0,0,0.45)');
     mask.addColorStop(1, 'rgba(0,0,0,' + (1 - fade).toFixed(3) + ')');
     imageMaskCtx.fillStyle = mask;
     imageMaskCtx.fillRect(0, 0, imageMaskCanvas.width, imageMaskCanvas.height);
