@@ -5,6 +5,8 @@ window.Affogato = window.Affogato || {};
 Affogato.SmoothScroll = (function () {
   var target = 0;
   var current = 0;
+  var prevCurrent = 0;
+  var velocity = 0; // px/frame, дельта сглаженной позиции за последний кадр
   var ease = 0.09;
   var autoTransitionProvider = null;
   var autoTransition = null;
@@ -52,6 +54,7 @@ Affogato.SmoothScroll = (function () {
     if (opts && typeof opts.ease === 'number') ease = opts.ease;
     readTarget();
     current = target;
+    prevCurrent = current;
     window.addEventListener('scroll', readTarget, { passive: true });
   }
 
@@ -81,6 +84,7 @@ Affogato.SmoothScroll = (function () {
     };
     current = from;
     target = from;
+    prevCurrent = current; // скачок current не должен попасть в velocity
     blockNativeScroll();
     syncNativeScroll(from);
   }
@@ -94,6 +98,7 @@ Affogato.SmoothScroll = (function () {
     autoTransition = null;
     current = value;
     target = value;
+    prevCurrent = current; // скачок current не должен попасть в velocity
     unblockNativeScroll();
     syncNativeScroll(value);
   }
@@ -101,6 +106,7 @@ Affogato.SmoothScroll = (function () {
   function lockAtCurrent() {
     lockedAt = current;
     target = current;
+    prevCurrent = current;
     blockNativeScroll();
     syncNativeScroll(current);
   }
@@ -151,10 +157,17 @@ Affogato.SmoothScroll = (function () {
   // нативной touch-инерцией, давая дёрганье. Синхронизируемся однократно
   // в начале (blockNativeScroll + syncNativeScroll) и при завершении.
   function update() {
+    advance();
+    velocity = current - prevCurrent;
+    prevCurrent = current;
+    return current;
+  }
+
+  function advance() {
     if (lockedAt !== null) {
       current = lockedAt;
       target = lockedAt;
-      return current;
+      return;
     }
 
     maybeStartAutoTransition();
@@ -168,25 +181,25 @@ Affogato.SmoothScroll = (function () {
         autoTransition = null;
         unblockNativeScroll();
         syncNativeScroll(current);
-        return current;
+        return;
       }
 
       var k = easeInOutCubic(p);
       current = autoTransition.from + (autoTransition.to - autoTransition.from) * k;
       target = current;
-      return current;
+      return;
     }
 
     current += (target - current) * ease;
     // Защёлкиваем у цели, чтобы не крутить бесконечный микро-лёрп.
     if (Math.abs(target - current) < 0.05) current = target;
-    return current;
   }
 
   function getState() {
     return {
       target: target,
       current: current,
+      velocity: velocity,
       autoTransitioning: !!autoTransition,
       locked: lockedAt !== null,
     };

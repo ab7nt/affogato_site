@@ -325,6 +325,12 @@ Affogato.Player = (function () {
     if (mode !== 'open') return;
     e.preventDefault();
     collectReturnScroll(-e.deltaY);
+    // Импульс воде только при жесте наверх (deltaY < 0). Вниз в плеере смысла
+    // не имеет — collectReturnScroll и так гасит накопленный preview, а взвесь
+    // не должна откликаться на «несуществующее» движение.
+    if (e.deltaY < 0 && Affogato.UnderwaterBg && Affogato.UnderwaterBg.pulseFromScroll) {
+      Affogato.UnderwaterBg.pulseFromScroll(e.deltaY);
+    }
   }
 
   function onTouchStart(e) {
@@ -340,6 +346,12 @@ Affogato.Player = (function () {
     var dy = y - touchLastY;
     touchLastY = y;
     collectReturnScroll(dy * 2.2);
+    // Свайп пальцем вниз (dy>0) — это движение наверх по сайту: только в эту
+    // сторону имеет смысл шевелить взвесь. Свайп пальцем вверх (dy<0) в плеере
+    // ничего не двигает — игнорируем.
+    if (dy > 0 && Affogato.UnderwaterBg && Affogato.UnderwaterBg.pulseFromScroll) {
+      Affogato.UnderwaterBg.pulseFromScroll(-dy);
+    }
   }
 
   function collectReturnScroll(amount) {

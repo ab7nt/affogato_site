@@ -7,6 +7,13 @@ window.Affogato = window.Affogato || {};
 Affogato.UnderwaterBg = (function () {
   var particles = null;
   var rays = null;
+  // Состояние velocity-параллакса. Держим один интегратор на модуль —
+  // в кадре все потребители (полароид-сцена, плеер) видят одно и то же
+  // «качание» воды.
+  var smoothVel = 0;           // сглаженный velocity, нормированный к ±1
+  var displacementY = 0;       // импульсное смещение взвеси по Y (доля экрана)
+  var velStateFrame = -1;      // на каком rAF-кадре последний раз обновляли (антидубль)
+  var pendingPulsePx = 0;      // внешний скролл-импульс (плеер, etc.), потребляется за кадр
 
   function rand(min, max) {
     return min + Math.random() * (max - min);
@@ -91,13 +98,15 @@ Affogato.UnderwaterBg = (function () {
   }
 
   // Лучи света сверху, яркость масштабируется topMul (затухает с глубиной сцены).
-  function drawRays(ctx, w, h, t, cfg, topMul) {
+  // parallax — общий контекст параллакса воды (см. render), null в плеере.
+  function drawRays(ctx, w, h, t, cfg, topMul, parallax) {
     if (topMul <= 0) return;
+    var currentX = parallax ? parallax.currentX * parallax.raysCurrentMul : 0;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     for (var i = 0; i < rays.length; i++) {
       var ray = rays[i];
-      var cx = (ray.baseX + Math.sin(t * ray.swayFreq + ray.phase) * ray.swayAmp) * w;
+      var cx = (ray.baseX + Math.sin(t * ray.swayFreq + ray.phase) * ray.swayAmp + currentX) * w;
       var cy = -h * 0.3; // источник света выше экрана
       var reach = h * (0.9 + ray.spread);
       var peak = cfg.opacity * ray.intensity * topMul;
@@ -133,14 +142,28 @@ Affogato.UnderwaterBg = (function () {
     ctx.restore();
   }
 
-  function drawParticles(ctx, w, h, t, cfg) {
+  // parallax — общий контекст параллакса (см. buildParallaxCtx).
+  // null — без параллакса вообще (на случай изолированного рендера).
+  function drawParticles(ctx, w, h, t, cfg, parallax) {
     var unit = h / 1100; // нормировка размера к высоте экрана
     ctx.save();
     ctx.fillStyle = cfg.color;
     for (var i = 0; i < particles.length; i++) {
       var p = particles[i];
-      var x = wrap01(p.baseX + Math.sin(t * p.wobbleFreq + p.phase) * p.wobbleAmp) * w;
-      var y = wrap01(p.baseY - t * p.drift * cfg.speed) * h;
+      // Общий горизонтальный «ток» с лёгкой зависимостью от глубины частицы:
+      // ближние сносит чуть сильнее, дальние — слабее.
+      var currentX = parallax ? parallax.currentX * (0.3 + p.depth) : 0;
+      // Слоистый параллакс по Y: глубинный прогресс сцены сдвигает ближние частицы
+      // заметно, дальние — почти нет. Центрируем относительно середины сцены,
+      // чтобы на стыке карточек не было одностороннего «уплытия» взвеси.
+      var parallaxY = parallax
+        ? (parallax.depth - 0.5) * parallax.depthShift * p.depth
+        : 0;
+      // Импульсный отклик на velocity скролла: одна и та же величина для всех,
+      // с лёгкой зависимостью от глубины частицы (ближние качаются заметнее).
+      var dispY = parallax ? parallax.displacementY * (0.3 + p.depth) : 0;
+      var x = wrap01(p.baseX + Math.sin(t * p.wobbleFreq + p.phase) * p.wobbleAmp + currentX) * w;
+      var y = wrap01(p.baseY - t * p.drift * cfg.speed + parallaxY + dispY) * h;
       var r = p.size * (cfg.sizeScale || 1) * unit;
       var alpha = (cfg.minOpacity + (cfg.maxOpacity - cfg.minOpacity) * p.bright) *
                   (0.4 + 0.6 * p.depth);
@@ -167,10 +190,58 @@ Affogato.UnderwaterBg = (function () {
     var topMul = dl.topStart + (dl.topEnd - dl.topStart) * d;
     var bottomLevel = dl.bottomStart + (dl.bottomEnd - dl.bottomStart) * d;
 
+    var parallax = buildParallaxCtx(cfg, t, d);
+
     drawGradient(ctx, w, h, cfg, topMul);
-    drawRays(ctx, w, h, t, cfg.rays, topMul);
+    drawRays(ctx, w, h, t, cfg.rays, topMul, parallax);
     drawBottomGlow(ctx, w, h, t, bottomLevel);
-    drawParticles(ctx, w, h, t, cfg.particles);
+    drawParticles(ctx, w, h, t, cfg.particles, parallax);
+  }
+
+  // Один раз за rAF-кадр пересчитывает velocity-отклик. Защита от двойного шага:
+  // при кросс-фейде между карточками render вызывается дважды подряд — low-pass
+  // smoothVel применился бы дважды и реакция была бы заметно резче, чем обычно.
+  function advanceVelocityState(px) {
+    var now = performance.now();
+    if (now - velStateFrame < 4) return; // тот же rAF-tick
+    velStateFrame = now;
+
+    var rawVel = 0;
+    if (window.Affogato && Affogato.SmoothScroll && Affogato.SmoothScroll.getState) {
+      rawVel = Affogato.SmoothScroll.getState().velocity || 0;
+    }
+    // Внешний импульс (плеер ловит wheel/touch сам, у него SmoothScroll залочен —
+    // velocity оттуда всегда 0). Складываем как «эквивалент дельты scrollY за кадр»
+    // и потребляем за один шаг.
+    rawVel += pendingPulsePx;
+    pendingPulsePx = 0;
+    // Нормируем сырой px/frame к ±1 с насыщением, потом low-pass — устраняет
+    // микро-дрожание сырого velocity без заметной задержки фазы.
+    var velNormRaw = Math.max(-1, Math.min(1, rawVel / Math.max(1, px.velocityRef)));
+    smoothVel += (velNormRaw - smoothVel) * px.velocitySmooth;
+
+    // Прямой маппинг: пока скроллится — смещение есть, перестал — smoothVel
+    // через low-pass идёт к 0 и displacement за ним. Знак положительный:
+    // скролл вниз страницы (velocity>0) → взвесь вниз по экрану.
+    displacementY = smoothVel * px.amplitude;
+  }
+
+  // Собирает текущий контекст параллакса воды.
+  // opts.velocityOnly = true — steady-state эффекты (depthShift, currentX)
+  // выключены, остаётся только импульсный displacement. Используется в плеере:
+  // фон-картинка статична, steady-state сдвиг оторвал бы взвесь от изображения дна,
+  // но короткий импульс безопасен — он быстро релаксирует к нулю.
+  function buildParallaxCtx(cfg, t, depth, opts) {
+    var px = cfg.parallax;
+    advanceVelocityState(px);
+    var velOnly = !!(opts && opts.velocityOnly);
+    return {
+      depth: depth,
+      depthShift: velOnly ? 0 : px.depthShift,
+      currentX: velOnly ? 0 : Math.sin(t * px.currentFreq) * px.currentAmpX,
+      raysCurrentMul: px.raysCurrentMul,
+      displacementY: displacementY,
+    };
   }
 
   // Только нижний свет — для финальной видео-сцены: на её входе свет
@@ -180,15 +251,29 @@ Affogato.UnderwaterBg = (function () {
   }
 
   // Только взвесь — для статичного фона плеера (стоп-кадр со дна + лёгкая взвесь).
+  // Параллакс в режиме velocityOnly: steady-state сдвиги (depthShift, currentX)
+  // выключены — они оторвали бы взвесь от статичной картинки дна. Импульсный
+  // displacement при подъёме из плеера остаётся: он короткий и плавно
+  // релаксирует к нулю, оторваться не успевает.
   function renderParticles(ctx, w, h) {
     var cfg = Affogato.Config.underwater;
+    var t = performance.now() / 1000;
     if (!particles) particles = buildParticles(cfg.particles.count);
-    drawParticles(ctx, w, h, performance.now() / 1000, cfg.particles);
+    var parallax = buildParallaxCtx(cfg, t, 0, { velocityOnly: true });
+    drawParticles(ctx, w, h, t, cfg.particles, parallax);
+  }
+
+  // Внешний канал velocity-импульса. Знак соответствует дельте scrollY:
+  // прокрутка вниз (scrollY растёт) — положительная дельта; вверх — отрицательная.
+  // Использует плеер, где SmoothScroll залочен и сам не отдаёт velocity.
+  function pulseFromScroll(deltaScrollPx) {
+    pendingPulsePx += deltaScrollPx;
   }
 
   return {
     render: render,
     renderBottomGlow: renderBottomGlow,
     renderParticles: renderParticles,
+    pulseFromScroll: pulseFromScroll,
   };
 })();
