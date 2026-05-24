@@ -353,6 +353,10 @@ body.in-player-mode .player-shell {
   line-height: 1.1;
   opacity: 0;
   transition: opacity 0.5s ease;
+  /* GPU-слой: на iOS Safari opacity-transition без promotion отрабатывает
+     на CPU и при reflow от смены длины заголовка даёт дрожание. */
+  transform: translateZ(0);
+  will-change: opacity;
 }
 
 .player__title.visible {
@@ -908,8 +912,12 @@ body.is-returning-to-start .return-hint--polaroid {
     gap: 1.45rem;
   }
 
+  /* Привязываем ширину карточки к меньшему из (66vw, 32vh, 285px) — на низких
+     экранах карточка ужимается по высоте, чтобы текст под ней + «после падения»
+     внизу (titles.polaroid.albumTopVH на мобиле) поместились между «вернуться»
+     сверху и «погрузиться» снизу. */
   .polaroid {
-    width: min(66vw, 285px);
+    width: min(66vw, 32vh, 285px);
   }
 
   .song-note {
@@ -929,5 +937,29 @@ body.is-returning-to-start .return-hint--polaroid {
   .song-note__text {
     font-size: 0.92rem;
     line-height: 1.5;
+  }
+}
+
+/* Совсем низкие экраны (короткие мобильные viewport'ы): сжимаем gap карточки
+   и шрифт описания, чтобы блок «полароид + текст» вместе с «после падения»
+   снизу гарантированно умещались под «вернуться» сверху и «погрузиться»
+   снизу. */
+@media (max-width: 760px) and (max-height: 760px) {
+  .song-card-scene {
+    gap: 1.1rem;
+  }
+
+  .song-note__title {
+    margin-bottom: 0.6rem;
+    font-size: clamp(1.3rem, 7vw, 2rem);
+  }
+
+  .song-note__kicker {
+    margin-bottom: 0.45rem;
+  }
+
+  .song-note__text {
+    font-size: 0.85rem;
+    line-height: 1.42;
   }
 }

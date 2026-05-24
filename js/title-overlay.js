@@ -39,17 +39,35 @@ Affogato.TitleOverlay = (function () {
     return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
   }
 
+  function isMobile() {
+    return !!(window.matchMedia && window.matchMedia('(max-width: 760px)').matches);
+  }
+
   function resolveItemConfig(cfg, key) {
     var item = {};
     var base = cfg[key];
     var mobile = cfg.mobile && cfg.mobile[key];
-    var useMobile = window.matchMedia && window.matchMedia('(max-width: 760px)').matches;
 
     for (var prop in base) item[prop] = base[prop];
-    if (useMobile && mobile) {
+    if (isMobile() && mobile) {
       for (var mobileProp in mobile) item[mobileProp] = mobile[mobileProp];
     }
     return item;
+  }
+
+  // Аналогично resolveItemConfig, но для составных «state»-блоков
+  // (titles.player.*, titles.polaroid.*). Сливает mobile[stateName] поверх
+  // базового. Используется в setStatic и playerState — благодаря этому на
+  // мобиле можно отдельно крутить позиции титров под плеер и полароид.
+  function resolveStateConfig(cfg, stateName) {
+    var out = {};
+    var base = cfg[stateName] || {};
+    var mobile = cfg.mobile && cfg.mobile[stateName];
+    for (var prop in base) out[prop] = base[prop];
+    if (isMobile() && mobile) {
+      for (var mobileProp in mobile) out[mobileProp] = mobile[mobileProp];
+    }
+    return out;
   }
 
   function applyOpacity(el, baseOpacity) {
@@ -59,13 +77,18 @@ Affogato.TitleOverlay = (function () {
   // Защита от налегания титров на «вернуться»/«погрузиться» при низких экранах:
   // на больших экранах позиция в vh, на маленьких — rem-минимум держит дистанцию
   // от кромки (учитывает высоту кнопок с шевроном/подсказкой и полу-высоту шрифта).
-  var EDGE_REM = 8;
+  // На мобиле сами кнопки .return-hint / .scroll-hint компактнее (≈3.5rem против
+  // ≈4.7rem на десктопе) и шрифт титров мельче — guard уменьшаем, иначе title
+  // отрывается далеко вниз от кнопки.
+  var EDGE_REM_DESKTOP = 8;
+  var EDGE_REM_MOBILE = 5.4;
   function topWithEdgeGuard(topVH, el) {
+    var rem = isMobile() ? EDGE_REM_MOBILE : EDGE_REM_DESKTOP;
     if (el === groupEl) {
-      return 'max(' + topVH.toFixed(2) + 'vh, ' + EDGE_REM + 'rem)';
+      return 'max(' + topVH.toFixed(2) + 'vh, ' + rem + 'rem)';
     }
     if (el === albumEl) {
-      return 'min(' + topVH.toFixed(2) + 'vh, calc(100vh - ' + EDGE_REM + 'rem))';
+      return 'min(' + topVH.toFixed(2) + 'vh, calc(100vh - ' + rem + 'rem))';
     }
     return topVH + 'vh';
   }
@@ -95,7 +118,7 @@ Affogato.TitleOverlay = (function () {
     var cfg = Affogato.Config.scenes.diving.titles;
     var groupCfg = resolveItemConfig(cfg, 'group');
     var albumCfg = resolveItemConfig(cfg, 'album');
-    var p = cfg.player || {};
+    var p = resolveStateConfig(cfg, 'player');
     return {
       groupTop: p.groupTopVH != null ? p.groupTopVH : groupCfg.endTopVH,
       albumTop: p.albumTopVH != null ? p.albumTopVH : albumCfg.endTopVH,
@@ -225,7 +248,7 @@ Affogato.TitleOverlay = (function () {
     var cfg = Affogato.Config.scenes.diving.titles;
     var groupCfg = resolveItemConfig(cfg, 'group');
     var albumCfg = resolveItemConfig(cfg, 'album');
-    var stateCfg = cfg[stateName || 'player'] || {};
+    var stateCfg = resolveStateConfig(cfg, stateName || 'player');
     var groupTop = stateCfg.groupTopVH != null ? stateCfg.groupTopVH : groupCfg.endTopVH;
     var albumTop = stateCfg.albumTopVH != null ? stateCfg.albumTopVH : albumCfg.endTopVH;
     var groupOp = stateCfg.groupOpacity != null ? stateCfg.groupOpacity : groupCfg.opacityEnd;

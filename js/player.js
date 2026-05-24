@@ -616,13 +616,35 @@ Affogato.Player = (function () {
     if (tracks.length) titleEl.textContent = tracks[currentIdx].title;
   }
 
+  // Меняем текст ТОЛЬКО когда opacity дошёл до 0 (transitionend на opacity).
+  // Раньше тут был setTimeout(280), который срабатывал посреди fade-out — на
+  // iOS Safari это давало рваный «щелчок»: текст менялся на полупрозрачном
+  // элементе, reflow на разной длине заголовков был виден. transitionend
+  // ловит реальный конец анимации; на всякий случай — fallback-таймер чуть
+  // длиннее самого transition (0.5s), чтобы кросс-фейд не «заморозился».
   function crossfadeTitle() {
-    titleEl.classList.remove('visible');
     if (titleCrossfadeTimer) window.clearTimeout(titleCrossfadeTimer);
-    titleCrossfadeTimer = window.setTimeout(function () {
+    var swapped = false;
+    var swap = function () {
+      if (swapped) return;
+      swapped = true;
+      titleEl.removeEventListener('transitionend', onEnd);
       titleEl.textContent = tracks[currentIdx].title;
-      titleEl.classList.add('visible');
-    }, 280);
+      // rAF гарантирует, что браузер успел применить opacity:0 перед тем,
+      // как мы вернёмся к visible — иначе transition может не отыграть.
+      window.requestAnimationFrame(function () {
+        window.requestAnimationFrame(function () {
+          titleEl.classList.add('visible');
+        });
+      });
+    };
+    var onEnd = function (e) {
+      if (e.propertyName !== 'opacity') return;
+      swap();
+    };
+    titleEl.addEventListener('transitionend', onEnd);
+    titleEl.classList.remove('visible');
+    titleCrossfadeTimer = window.setTimeout(swap, 620);
   }
 
   function updatePlayButton() {
