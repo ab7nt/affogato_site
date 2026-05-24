@@ -54,7 +54,7 @@ Affogato.Config = {
         album: {
           text: 'после падения',
           delaySec: 0.5,
-          startTopVH: 75,
+          startTopVH: 53,
           endTopVH: 87,
           opacityStart: 0.95,
           opacityEnd: 0.22,
