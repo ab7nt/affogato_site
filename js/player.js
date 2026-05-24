@@ -55,11 +55,15 @@ Affogato.Player = (function () {
   }
 
   function createDom() {
-    returnHintEl = document.createElement('div');
+    returnHintEl = document.createElement('button');
+    returnHintEl.type = 'button';
     returnHintEl.id = 'return-hint';
-    returnHintEl.className = 'return-hint';
+    returnHintEl.className = 'return-hint return-hint--player';
+    returnHintEl.setAttribute('aria-label', 'Вернуться');
+    // Структура и подсказка идентичны polaroid-кнопке (в index.html).
     returnHintEl.innerHTML =
       '<span class="return-hint__arrow" aria-hidden="true"></span>' +
+      '<span class="return-hint__sub">лучше скроллить, но можно и нажать</span>' +
       '<span class="return-hint__label">вернуться</span>';
     document.body.appendChild(returnHintEl);
 

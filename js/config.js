@@ -47,7 +47,7 @@ Affogato.Config = {
           text: 'АФФОГАТО',
           delaySec: 0.5,
           startTopVH: 35,
-          endTopVH: 10,
+          endTopVH: 17,   // = polaroid.groupTopVH — без прыжка позиции на переходе
           opacityStart: 1,
           opacityEnd: 0.12,
         },
@@ -72,6 +72,16 @@ Affogato.Config = {
           albumTopVH: 87,
           groupOpacity: 0.32,
           albumOpacity: 0.22,
+        },
+        // Аналогично — для сцен с полароидами. «АФФОГАТО» опущен ниже, чтобы
+        // не пересекаться с кнопкой «вернуться» наверху. «После падения»
+        // сделан почти невидимым: иначе налезает на «погрузиться» с подписью
+        // снизу. Позиция держит низкий бекграунд-уровень для атмосферы.
+        polaroid: {
+          groupTopVH: 17,
+          albumTopVH: 87,
+          groupOpacity: 0.22,
+          albumOpacity: 0.08,
         },
       },
     },

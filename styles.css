@@ -111,6 +111,17 @@ body.ready .scroll-hint {
   animation: scroll-hint-arrow 1.8s ease-in-out infinite;
 }
 
+/* Мелкая подсказка сразу под «погрузиться»: дешёвая инструкция для тех, кто
+   не понял что главный способ — скролл. Заметно тише основной надписи.
+   Отрицательный margin-top компенсирует gap родителя (0.55rem) — подсказка
+   прижимается вплотную к слову, шеврон остаётся на штатном отступе ниже. */
+.scroll-hint__sub {
+  margin-top: -0.4rem;
+  font-size: clamp(0.65rem, 1.1vw, 0.78rem);
+  opacity: 0.55;
+  letter-spacing: 0.02em;
+}
+
 @keyframes scroll-hint-arrow {
   0%,
   100% {
@@ -121,6 +132,87 @@ body.ready .scroll-hint {
   50% {
     opacity: 0.9;
     translate: 0 0.35rem;
+  }
+}
+
+/* Стиль .return-hint и его внутренних элементов — единый для двух кнопок
+   возврата: в плеере (.return-hint--player, создаётся динамически в
+   js/player.js) и на полароидах (.return-hint--polaroid, в index.html).
+   Различаются только условиями показа — см. блок модификаторов ниже. */
+
+/* Кнопка возврата к началу со сцен полароидов. По высоте симметрична с
+   .scroll-hint, по горизонтали — у правой кромки. Подписи нет ни на десктопе,
+   ни на мобиле: только двойной шеврон вверх, максимально незаметный. */
+.surface-hint {
+  position: fixed;
+  right: clamp(1.2rem, 4vw, 2.4rem);
+  bottom: clamp(1.2rem, 4vw, 2.4rem);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem;
+  border: 0;
+  background: none;
+  color: rgba(232, 236, 229, 0.38);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease, color 0.25s ease;
+  cursor: pointer;
+  will-change: opacity;
+}
+
+.surface-hint:hover {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.surface-hint:focus-visible {
+  outline: 1px solid rgba(232, 236, 229, 0.32);
+  outline-offset: 0.45rem;
+}
+
+/* В плеере и во время возврата к началу — жёстко прячем, главный rAF-цикл
+   там стоит и не обновляет inline opacity. */
+body.in-player-mode .surface-hint,
+body.is-returning-to-start .surface-hint {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Двойной шеврон вверх: два псевдо-элемента в колонке, второй заходит на
+   первый через отрицательный margin — между остриями только тонкий зазор.
+   Анимация дыхания/всплывания — приглушённая, чтобы не привлекать внимание. */
+.surface-hint__arrows {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: surface-hint-arrows 1.8s ease-in-out infinite;
+}
+
+.surface-hint__arrows::before,
+.surface-hint__arrows::after {
+  content: '';
+  width: 0.7rem;
+  height: 0.7rem;
+  border-left: 1px solid currentColor;
+  border-top: 1px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.surface-hint__arrows::after {
+  margin-top: -0.42rem;
+}
+
+@keyframes surface-hint-arrows {
+  0%,
+  100% {
+    opacity: 0.2;
+    translate: 0 0;
+  }
+
+  50% {
+    opacity: 0.55;
+    translate: 0 -0.28rem;
   }
 }
 
@@ -473,6 +565,9 @@ body.in-player-mode .player-shell {
   flex-direction: column;
   align-items: center;
   gap: 0.55rem;
+  padding: 0;
+  border: 0;
+  background: none;
   color: rgba(232, 236, 229, 0.68);
   font-family: 'Poiret One', system-ui, sans-serif;
   font-size: clamp(1rem, 2vw, 1.3rem);
@@ -481,14 +576,37 @@ body.in-player-mode .player-shell {
   transform: translateX(-50%);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.6s ease;
+  transition: opacity 0.6s ease, color 0.25s ease;
   cursor: pointer;
   will-change: opacity;
 }
 
-body.in-player-mode .return-hint {
+.return-hint:hover {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.return-hint:focus-visible {
+  outline: 1px solid rgba(232, 236, 229, 0.52);
+  outline-offset: 0.45rem;
+}
+
+/* Модификаторы — управляют видимостью в нужном контексте. Базовый класс
+   всегда невидим, показ только через модификатор + соответствующий класс
+   body / inline opacity из app.js. */
+
+/* Плеерный вариант: автоматически проявляется при body.in-player-mode. */
+body.in-player-mode .return-hint--player {
   opacity: 1;
   pointer-events: auto;
+}
+
+/* Полароидный вариант: opacity ставит app.js (см. updatePolaroidReturn).
+   В плеере и во время возврата к началу — жёстко прячем (rAF спит и
+   inline-стиль не обновляется). */
+body.in-player-mode .return-hint--polaroid,
+body.is-returning-to-start .return-hint--polaroid {
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 .return-hint__arrow {
@@ -498,6 +616,21 @@ body.in-player-mode .return-hint {
   border-top: 1px solid currentColor;
   transform: rotate(45deg);
   animation: return-hint-arrow 1.8s ease-in-out infinite;
+}
+
+/* Подсказка между шевроном и словом «вернуться»: одинаковый отрицательный
+   margin сверху и снизу компенсирует gap родителя (0.55rem), оставляя
+   зазор ~0.15rem с обеих сторон — те же значения, что у .scroll-hint
+   между словом и подсказкой. */
+.return-hint__sub {
+  margin-top: -0.4rem;
+  font-size: clamp(0.65rem, 1.1vw, 0.78rem);
+  opacity: 0.55;
+  letter-spacing: 0.02em;
+}
+
+.return-hint__label {
+  margin-top: -0.7rem;
 }
 
 @keyframes return-hint-arrow {

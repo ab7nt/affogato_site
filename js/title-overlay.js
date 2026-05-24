@@ -56,13 +56,27 @@ Affogato.TitleOverlay = (function () {
     el.style.opacity = (baseOpacity * finalFade).toFixed(3);
   }
 
+  // Защита от налегания титров на «вернуться»/«погрузиться» при низких экранах:
+  // на больших экранах позиция в vh, на маленьких — rem-минимум держит дистанцию
+  // от кромки (учитывает высоту кнопок с шевроном/подсказкой и полу-высоту шрифта).
+  var EDGE_REM = 8;
+  function topWithEdgeGuard(topVH, el) {
+    if (el === groupEl) {
+      return 'max(' + topVH.toFixed(2) + 'vh, ' + EDGE_REM + 'rem)';
+    }
+    if (el === albumEl) {
+      return 'min(' + topVH.toFixed(2) + 'vh, calc(100vh - ' + EDGE_REM + 'rem))';
+    }
+    return topVH + 'vh';
+  }
+
   function updateItem(el, itemCfg, progress, visibleProgress) {
     var motion = easeOutCubic(progress);
     var reveal = clamp01(visibleProgress);
     var opacity = lerp(itemCfg.opacityStart, itemCfg.opacityEnd, motion) * reveal;
 
     var top = lerp(itemCfg.startTopVH, itemCfg.endTopVH, motion);
-    el.style.top = top + 'vh';
+    el.style.top = topWithEdgeGuard(top, el);
     if (el === groupEl) groupTopVH = top;
     if (el === albumEl) albumTopVH = top;
     return opacity;
@@ -108,8 +122,8 @@ Affogato.TitleOverlay = (function () {
     groupBaseOpacity = state.groupOpacity;
     albumBaseOpacity = state.albumOpacity;
     finalFade = 1;
-    groupEl.style.top = groupTopVH + 'vh';
-    albumEl.style.top = albumTopVH + 'vh';
+    groupEl.style.top = topWithEdgeGuard(groupTopVH, groupEl);
+    albumEl.style.top = topWithEdgeGuard(albumTopVH, albumEl);
     applyOpacity(groupEl, groupBaseOpacity);
     applyOpacity(albumEl, albumBaseOpacity);
   }
@@ -126,6 +140,11 @@ Affogato.TitleOverlay = (function () {
   function render(sceneProgress, offsetFrac) {
     if (!groupEl || !albumEl) return;
     if (staticMode) return; // в режиме плеера титры держатся в конечном состоянии
+
+    // Снимаем CSS-transition: при покадровой анимации он создаёт отставание.
+    // setStatic выставляет transition обратно, когда нужна плавность смены режима.
+    groupEl.style.transition = '';
+    albumEl.style.transition = '';
 
     var cfg = Affogato.Config.scenes.diving.titles;
     var now = performance.now();
@@ -174,6 +193,13 @@ Affogato.TitleOverlay = (function () {
   function beginPlayerTransition(direction) {
     if (!groupEl || !albumEl) return;
     staticMode = true;
+    // playerTransition сам анимирует position/opacity по rAF (через applyState
+    // каждый кадр). Если на элементе висит CSS-transition (он остаётся от
+    // предыдущего setStatic, который ставит 0.6s ease), браузер будет
+    // интерполировать поверх — получится отставание/разсинхрон позиции
+    // и opacity. Сбрасываем transition, пусть rAF-tween идёт чисто.
+    groupEl.style.transition = '';
+    albumEl.style.transition = '';
     var target = direction === 'up' ? surfaceState() : playerState();
     playerTransition = {
       from: direction === 'up' ? playerState() : currentState(),
@@ -187,25 +213,31 @@ Affogato.TitleOverlay = (function () {
     applyState(interpolateState(playerTransition.from, playerTransition.to, t));
   }
 
-  // Замораживает титры в их «конечном приглушённом» виде — для режима плеера.
-  // Позиции и opacity берутся из titles.player.* (если задано) либо из endTopVH/opacityEnd
-  // карточечного состояния. В config регулируется верх «АФФОГАТО» под плеер.
-  function setStatic(active) {
+  // Замораживает титры в их «конечном приглушённом» виде. По умолчанию режим
+  // 'player' (titles.player.* — позиция и opacity под кнопку «вернуться» в
+  // плеере). Можно передать другое имя — например 'polaroid' для смещённой
+  // позиции АФФОГАТО на полароид-сценах. CSS-transition включается только в
+  // статическом режиме: при diving render() ставит transition='' и движение
+  // идёт по rAF, чтобы переходить между сценами без отставания.
+  function setStatic(active, stateName) {
     staticMode = !!active;
     if (!staticMode || !groupEl || !albumEl) return;
     var cfg = Affogato.Config.scenes.diving.titles;
     var groupCfg = resolveItemConfig(cfg, 'group');
     var albumCfg = resolveItemConfig(cfg, 'album');
-    var p = cfg.player || {};
-    var groupTop = p.groupTopVH != null ? p.groupTopVH : groupCfg.endTopVH;
-    var albumTop = p.albumTopVH != null ? p.albumTopVH : albumCfg.endTopVH;
-    var groupOp = p.groupOpacity != null ? p.groupOpacity : groupCfg.opacityEnd;
-    var albumOp = p.albumOpacity != null ? p.albumOpacity : albumCfg.opacityEnd;
+    var stateCfg = cfg[stateName || 'player'] || {};
+    var groupTop = stateCfg.groupTopVH != null ? stateCfg.groupTopVH : groupCfg.endTopVH;
+    var albumTop = stateCfg.albumTopVH != null ? stateCfg.albumTopVH : albumCfg.endTopVH;
+    var groupOp = stateCfg.groupOpacity != null ? stateCfg.groupOpacity : groupCfg.opacityEnd;
+    var albumOp = stateCfg.albumOpacity != null ? stateCfg.albumOpacity : albumCfg.opacityEnd;
     finalFade = 1;
     groupBaseOpacity = groupOp;
     albumBaseOpacity = albumOp;
-    groupEl.style.top = groupTop + 'vh';
-    albumEl.style.top = albumTop + 'vh';
+    var trans = 'top 0.6s ease, opacity 0.6s ease';
+    groupEl.style.transition = trans;
+    albumEl.style.transition = trans;
+    groupEl.style.top = topWithEdgeGuard(groupTop, groupEl);
+    albumEl.style.top = topWithEdgeGuard(albumTop, albumEl);
     groupTopVH = groupTop;
     albumTopVH = albumTop;
     applyOpacity(groupEl, groupBaseOpacity);
