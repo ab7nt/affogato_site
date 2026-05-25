@@ -10,11 +10,11 @@ Affogato.Sky = (function () {
   var formEl, emailEl, messageEl, submitBtn, successEl, errorEl;
   var sending = false;
 
-  // AJAX-endpoint FormSubmit.co. Hash получают на formsubmit.co (без
-  // регистрации) — это алиас для affogato.sound@gmail.com. До первого
-  // подтверждения (FormSubmit пришлёт письмо со ссылкой) запросы будут
-  // отвечать success:false. После — все письма с формы идут на почту.
-  var FORMSUBMIT_ENDPOINT = 'https://formsubmit.co/el/woxoro';
+  // AJAX-endpoint FormSubmit.co. Использует плоский email — el/-алиасы
+  // (вида el/woxoro) на AJAX-endpoint отдают 404; их формат предназначен
+  // только для action обычной HTML-формы. Адрес активирован, спам-фильтр
+  // FormSubmit (honeypot + _captcha=false) защищает от роботов.
+  var FORMSUBMIT_ENDPOINT = 'https://formsubmit.co/ajax/affogato.sound@gmail.com';
 
   var frames = null;
   var loading = false;
