@@ -1,0 +1,347 @@
+// Модальная сцена «написать»: кликом «написать» в верхней навигации
+// запускается авто-проигрывание 81 кадра из into-the-sky, на финальном
+// кадре проявляется панель с формой письма. Выход — кнопка «обратно»
+// (авто-проигрывание кадров в обратную сторону) или scroll-up с
+// накоплением порога. По структуре повторяет Affogato.Forest.
+window.Affogato = window.Affogato || {};
+
+Affogato.Sky = (function () {
+  var triggerEl, returnEl, shellEl, panelEl, contentEl, canvasEl, loadingEl, formEl, ctx;
+  var frames = null;
+  var loading = false;
+  var mode = 'closed'; // 'closed' | 'loading' | 'descending' | 'open' | 'ascending'
+  var progress = 0;
+  var animFrom = 0, animTo = 0, animStart = 0, animDuration = 0;
+  var raf = null;
+  var returnScrollDebt = 0;
+  var lastReturnScrollAt = 0;
+  var touchLastY = 0;
+
+  var SCRUB_PX_PER_PROGRESS = 1100;
+  var PANEL_FADE_START = 0.78;
+
+  function cfg() {
+    return Affogato.Config.scenes.sky;
+  }
+
+  function clamp01(v) {
+    return v < 0 ? 0 : (v > 1 ? 1 : v);
+  }
+
+  function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  // ───────────────────────────────────────── canvas ──
+
+  function applyCanvasSize() {
+    var perf = Affogato.Config.performance || {};
+    var dpr = Math.min(window.devicePixelRatio || 1, perf.maxDpr || 1.5);
+    var w = Affogato.Viewport.width();
+    var h = Affogato.Viewport.height();
+    canvasEl.width = Math.round(w * dpr);
+    canvasEl.height = Math.round(h * dpr);
+    canvasEl.style.width = w + 'px';
+    canvasEl.style.height = h + 'px';
+    ctx.imageSmoothingQuality = 'high';
+  }
+
+  function drawFrame(img) {
+    var cw = canvasEl.width, ch = canvasEl.height;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, cw, ch);
+    if (!img) return;
+    var iw = img.naturalWidth || img.width || cw;
+    var ih = img.naturalHeight || img.height || ch;
+    var scale = Math.max(cw / iw, ch / ih);
+    var dw = iw * scale, dh = ih * scale;
+    ctx.drawImage(img, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
+  }
+
+  function renderProgress(p) {
+    if (!frames || !frames.length) return;
+    var c = cfg();
+    var s = c.startSpeed != null ? c.startSpeed : 0.4;
+    var eased = s * p + (1 - s) * p * p;
+    var idx = Math.round(eased * (frames.length - 1));
+    if (idx < 0) idx = 0;
+    if (idx > frames.length - 1) idx = frames.length - 1;
+
+    drawFrame(frames[idx]);
+
+    var overlayOpacity = clamp01((p - PANEL_FADE_START) / (1 - PANEL_FADE_START)).toFixed(3);
+    if (panelEl) panelEl.style.opacity = overlayOpacity;
+    if (contentEl) contentEl.style.opacity = overlayOpacity;
+  }
+
+  // ─────────────────────────────────── loading ──
+
+  function framePath(n) {
+    var f = cfg().frames;
+    var num = String(n).padStart(f.pad, '0');
+    return f.dir + '/' + f.prefix + num + f.ext;
+  }
+
+  function loadOne(src) {
+    return new Promise(function (resolve) {
+      var img = new Image();
+      img.onload = function () {
+        if (img.decode) {
+          img.decode().then(function () { resolve(img); }, function () { resolve(img); });
+        } else {
+          resolve(img);
+        }
+      };
+      img.onerror = function () { resolve(img); };
+      img.src = src;
+    });
+  }
+
+  function loadFrames() {
+    if (frames) return Promise.resolve(frames);
+    if (loading) return loading;
+    var f = cfg().frames;
+    var tasks = [];
+    for (var i = 0; i < f.count; i++) tasks.push(loadOne(framePath(f.start + i)));
+    loading = Promise.all(tasks).then(function (imgs) {
+      frames = imgs;
+      loading = false;
+      return frames;
+    });
+    return loading;
+  }
+
+  // ─────────────────────────────────────── UI ──
+
+  function hideSiteOverlays() {
+    ['top-nav', 'scroll-hint', 'surface-hint', 'polaroid-return'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.style.opacity = 0;
+        el.style.pointerEvents = 'none';
+      }
+    });
+  }
+
+  function showLoading(on) {
+    if (!loadingEl) return;
+    loadingEl.classList.toggle('is-visible', !!on);
+  }
+
+  // ───────────────────────────── анимация ──
+
+  function startAnim(from, to, durSec, onDone) {
+    animFrom = from;
+    animTo = to;
+    animDuration = Math.max(0.05, durSec) * 1000;
+    animStart = performance.now();
+
+    function tick(now) {
+      var p = (now - animStart) / animDuration;
+      if (p >= 1) p = 1;
+      var k = easeInOutCubic(p);
+      progress = animFrom + (animTo - animFrom) * k;
+      renderProgress(progress);
+      if (p < 1) {
+        raf = requestAnimationFrame(tick);
+      } else {
+        raf = null;
+        if (onDone) onDone();
+      }
+    }
+
+    if (raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(tick);
+  }
+
+  // ─────────────────────────── open / close ──
+
+  function open() {
+    if (mode !== 'closed') return;
+    mode = 'loading';
+    showLoading(true);
+    canvasEl.classList.add('is-visible');
+    hideSiteOverlays();
+    Affogato.SmoothScroll.lockAtCurrent();
+
+    loadFrames().then(function () {
+      if (mode !== 'loading') return;
+      showLoading(false);
+      mode = 'descending';
+      document.body.classList.add('in-sky-mode');
+      if (Affogato.TitleOverlay && Affogato.TitleOverlay.hide) {
+        Affogato.TitleOverlay.hide();
+      }
+      applyCanvasSize();
+      progress = 0;
+      renderProgress(0);
+      shellEl.classList.remove('is-open');
+
+      startAnim(0, 1, cfg().descentSec || 1.2, function () {
+        mode = 'open';
+        progress = 1;
+        renderProgress(1);
+        shellEl.classList.add('is-open');
+        document.body.classList.add('sky-content-open');
+        returnScrollDebt = 0;
+        lastReturnScrollAt = 0;
+      });
+    });
+  }
+
+  function close(opts) {
+    if (mode !== 'open' && mode !== 'descending') return;
+    opts = opts || {};
+    var startProgress = clamp01(opts.startProgress != null ? opts.startProgress : progress);
+    if (mode === 'descending' && raf) {
+      cancelAnimationFrame(raf);
+      raf = null;
+    }
+    mode = 'ascending';
+    shellEl.classList.remove('is-open');
+    document.body.classList.remove('sky-content-open');
+    returnScrollDebt = 0;
+    lastReturnScrollAt = 0;
+
+    var fullDur = cfg().ascentSec || 1.2;
+    var dur = Math.max(0.12, startProgress * fullDur);
+
+    progress = startProgress;
+    renderProgress(progress);
+
+    startAnim(startProgress, 0, dur, function () {
+      if (Affogato.TitleOverlay && Affogato.TitleOverlay.reset) {
+        Affogato.TitleOverlay.reset();
+      }
+      document.body.classList.remove('in-sky-mode');
+      canvasEl.classList.remove('is-visible');
+      Affogato.SmoothScroll.unlock();
+      mode = 'closed';
+      progress = 0;
+    });
+  }
+
+  // ──────────────── scroll-out из «написать» ──
+
+  function applyScrub(amount) {
+    var delta = amount / SCRUB_PX_PER_PROGRESS;
+    progress = clamp01(progress + delta);
+    renderProgress(progress);
+    if (mode === 'open' && shellEl) {
+      if (progress >= 1) shellEl.classList.add('is-open');
+      else shellEl.classList.remove('is-open');
+    }
+  }
+
+  function collectReturnScroll(amount) {
+    if (mode !== 'open') return;
+    var now = performance.now();
+    if (!lastReturnScrollAt || now - lastReturnScrollAt > 850) {
+      returnScrollDebt = 0;
+    }
+    lastReturnScrollAt = now;
+
+    if (amount <= 0) {
+      returnScrollDebt = Math.max(0, returnScrollDebt + amount * 0.7);
+      return;
+    }
+
+    returnScrollDebt += amount;
+    var threshold = cfg().returnScrollThreshold || 900;
+    if (returnScrollDebt >= threshold) {
+      returnScrollDebt = 0;
+      close({ startProgress: progress });
+    }
+  }
+
+  // Скролл внутри textarea: если у элемента ещё есть, куда скроллить, гасим
+  // событие, чтобы оно не уходило в applyScrub и не сворачивало форму.
+  function isScrollableTarget(target, deltaY) {
+    var el = target;
+    while (el && el !== document.body) {
+      if (el === formEl || (formEl && formEl.contains(el))) {
+        if (el.scrollHeight > el.clientHeight) {
+          var atTop = el.scrollTop <= 0;
+          var atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight;
+          if (deltaY > 0 && !atBottom) return true;
+          if (deltaY < 0 && !atTop) return true;
+        }
+      }
+      el = el.parentNode;
+    }
+    return false;
+  }
+
+  function onWheel(e) {
+    if (mode !== 'open') return;
+    if (isScrollableTarget(e.target, e.deltaY)) return;
+    e.preventDefault();
+    applyScrub(e.deltaY);
+    collectReturnScroll(-e.deltaY);
+  }
+
+  function onTouchStart(e) {
+    if (mode === 'open' && e.touches && e.touches[0]) {
+      touchLastY = e.touches[0].clientY;
+    }
+  }
+
+  function onTouchMove(e) {
+    if (mode !== 'open' || !e.touches || !e.touches[0]) return;
+    var y = e.touches[0].clientY;
+    var dy = y - touchLastY;
+    touchLastY = y;
+    if (isScrollableTarget(e.target, -dy)) return;
+    if (e.cancelable) e.preventDefault();
+    applyScrub(-dy * 2.2);
+    collectReturnScroll(dy * 2.2);
+  }
+
+  // ────────────────────────────── init ──
+
+  function bindEvents() {
+    triggerEl.addEventListener('click', function (e) {
+      e.preventDefault();
+      open();
+    });
+    returnEl.addEventListener('click', function () {
+      close();
+    });
+    if (formEl) {
+      formEl.addEventListener('submit', function (e) {
+        e.preventDefault();
+        // TODO: интеграция с реальной отправкой письма
+      });
+    }
+    window.addEventListener('wheel', onWheel, { passive: false });
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+  }
+
+  function init() {
+    triggerEl = document.getElementById('sky-trigger');
+    returnEl = document.getElementById('sky-return');
+    shellEl = document.getElementById('sky-shell');
+    panelEl = shellEl ? shellEl.querySelector('.sky-shell__panel') : null;
+    contentEl = shellEl ? shellEl.querySelector('.sky-shell__content') : null;
+    canvasEl = document.getElementById('sky-overlay');
+    loadingEl = document.getElementById('sky-loading');
+    formEl = document.getElementById('sky-form');
+    if (!triggerEl || !canvasEl) return;
+
+    ctx = canvasEl.getContext('2d');
+    applyCanvasSize();
+    Affogato.Viewport.onChange(function () {
+      applyCanvasSize();
+      if (mode !== 'closed') renderProgress(progress);
+    });
+
+    bindEvents();
+  }
+
+  function isActive() {
+    return mode !== 'closed';
+  }
+
+  return { init: init, isActive: isActive };
+})();

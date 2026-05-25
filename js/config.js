@@ -169,6 +169,25 @@ Affogato.Config = {
         endShiftFrac: 0.12, // итоговое смещение на progress=1 (≈22% dw)
       },
     },
+    sky: {
+      // Манифест секвенции «в небо» — модальный переход по клику «написать».
+      // Структурно повторяет forest: лениво грузится при первом клике, на
+      // финальном кадре проявляется панель с формой письма.
+      frames: {
+        dir: 'into-the-sky',
+        prefix: 'into-the-sky_frame_',
+        pad: 4,
+        start: 1,
+        count: 81,
+        ext: '.jpg',
+        width: 1280,
+        height: 720,
+      },
+      descentSec: 1.2,
+      ascentSec: 1.2,
+      returnScrollThreshold: 920,
+      startSpeed: 0.4,
+    },
   },
 
   // Локальный плеер альбома (js/player.js).

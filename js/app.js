@@ -109,6 +109,9 @@
     // Модальная сцена «о проекте» (лес). Триггер и кадры — внутри модуля.
     if (Affogato.Forest) Affogato.Forest.init();
 
+    // Модальная сцена «написать» (небо). Структурно симметрична forest.
+    if (Affogato.Sky) Affogato.Sky.init();
+
     function getForwardTransitionTarget(scrollPx) {
       var finalIndex = SM.sceneIndex('stoneVideo');
       var edgeEps = 2;
@@ -155,7 +158,8 @@
     scrollHint.addEventListener('click', function () {
       var playerActive = Affogato.Player && Affogato.Player.isActive();
       var forestActive = Affogato.Forest && Affogato.Forest.isActive();
-      if (isReturningToStart || playerActive || forestActive) return;
+      var skyActive = Affogato.Sky && Affogato.Sky.isActive();
+      if (isReturningToStart || playerActive || forestActive || skyActive) return;
       var state = Affogato.SmoothScroll.getState ? Affogato.SmoothScroll.getState() : null;
       if (state && state.autoTransitioning) return;
       var current = state ? state.current : (window.scrollY || window.pageYOffset || 0);
@@ -261,7 +265,8 @@
       // успевает плавно «вернуться» поверх угасающего transit-canvas.
       var playerActive = Affogato.Player && Affogato.Player.isActive();
       var forestActive = Affogato.Forest && Affogato.Forest.isActive();
-      if (isReturningToStart || playerActive || forestActive) {
+      var skyActive = Affogato.Sky && Affogato.Sky.isActive();
+      if (isReturningToStart || playerActive || forestActive || skyActive) {
         window.setTimeout(function () {
           requestAnimationFrame(loop);
         }, (Affogato.Config.performance && Affogato.Config.performance.sleepMs) || 180);
