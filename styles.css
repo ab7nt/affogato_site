@@ -992,7 +992,10 @@ body.is-returning-to-start .return-hint--polaroid {
   outline-offset: 0.45rem;
 }
 
-/* Полноэкранный canvas под кадры леса — поведение аналогично transit-overlay. */
+/* Полноэкранный canvas под кадры леса. Бесшовный стык с main-сценой —
+   через canvas-снимок #stage внутри forest.js (renderProgress блендит
+   снимок поверх forest-кадра в зоне p≈0). CSS opacity-transition — лёгкая
+   страховка от рассогласования снимка и #stage. */
 .forest-overlay {
   position: fixed;
   inset: 0;
@@ -1002,7 +1005,7 @@ body.is-returning-to-start .return-hint--polaroid {
   height: 100%;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.25s ease;
+  transition: opacity 0.4s ease;
 }
 
 .forest-overlay.is-visible {
@@ -1152,7 +1155,10 @@ body.in-forest-mode .titles {
 
 /* ───────────────────────────────────────────── sky «написать» ─── */
 
-/* Полноэкранный canvas под кадры неба — по поведению идентичен forest-overlay. */
+/* Полноэкранный canvas под кадры неба. Бесшовный стык с main-сценой —
+   через canvas-снимок #stage внутри sky.js (renderProgress блендит снимок
+   поверх sky-кадра в зоне p≈0). CSS opacity-transition — тонкая страховка
+   на случай малейшего рассогласования снимка и #stage. */
 .sky-overlay {
   position: fixed;
   inset: 0;
@@ -1162,7 +1168,7 @@ body.in-forest-mode .titles {
   height: 100%;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.25s ease;
+  transition: opacity 0.4s ease;
 }
 
 .sky-overlay.is-visible {

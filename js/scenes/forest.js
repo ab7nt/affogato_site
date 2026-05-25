@@ -26,6 +26,16 @@ Affogato.Forest = (function () {
   // progress=1; всё, что раньше — линейно от 0 к 1.
   var PANEL_FADE_START = 0.78;
 
+  // Offscreen-снимок #stage в момент клика «что это?». Накладывается поверх
+  // forest-кадра с убывающей альфой на старте descent и нарастающей — на
+  // финале ascent: на стыке main-сцена и forest-overlay показывают идентичные
+  // пиксели, разница ракурсов между диванг-кадром и forest_0001 не видна.
+  var snapshotCanvas = null;
+  var snapshotCtx = null;
+
+  // На какой доле прогресса снимок главной сцены полностью «растворяется».
+  var SNAPSHOT_FADE_END = 0.1;
+
   function cfg() {
     return Affogato.Config.scenes.forest;
   }
@@ -69,6 +79,32 @@ Affogato.Forest = (function () {
     ctx.drawImage(img, (cw - dw) / 2 + offsetX, (ch - dh) / 2, dw, dh);
   }
 
+  // Снимок текущего состояния главного канваса (#stage). Размер подгоняется
+  // под forest-overlay, чтобы drawImage в renderProgress работал 1:1.
+  function captureMainSnapshot() {
+    var stageCanvas = document.getElementById('stage');
+    if (!stageCanvas || !canvasEl.width || !canvasEl.height) {
+      snapshotCanvas = null;
+      return;
+    }
+    if (!snapshotCanvas) {
+      snapshotCanvas = document.createElement('canvas');
+      snapshotCtx = snapshotCanvas.getContext('2d');
+    }
+    snapshotCanvas.width = canvasEl.width;
+    snapshotCanvas.height = canvasEl.height;
+    snapshotCtx.imageSmoothingQuality = 'high';
+    try {
+      snapshotCtx.drawImage(
+        stageCanvas,
+        0, 0, stageCanvas.width, stageCanvas.height,
+        0, 0, snapshotCanvas.width, snapshotCanvas.height
+      );
+    } catch (e) {
+      snapshotCanvas = null;
+    }
+  }
+
   function renderProgress(p) {
     if (!frames || !frames.length) return;
     var c = cfg();
@@ -88,6 +124,20 @@ Affogato.Forest = (function () {
       offsetXFrac = (pan.endShiftFrac || 0) * k;
     }
     drawFrame(frames[idx], offsetXFrac);
+
+    // Бесшовный стык: при p≈0 поверх forest-кадра рисуется снимок #stage с
+    // альфой ≈ 1 — forest-overlay показывает ровно те же пиксели, что main
+    // под ним. По мере роста progress снимок гаснет и появляются forest-кадры;
+    // на закрытии — симметрично, снимок снова проявляется к p=0.
+    if (snapshotCanvas) {
+      var snapshotAlpha = clamp01(1 - p / SNAPSHOT_FADE_END);
+      if (snapshotAlpha > 0) {
+        ctx.save();
+        ctx.globalAlpha = snapshotAlpha;
+        ctx.drawImage(snapshotCanvas, 0, 0, canvasEl.width, canvasEl.height);
+        ctx.restore();
+      }
+    }
 
     // Подложка под текст «о проекте» и сам контент: начинают проявляться
     // уже на последних кадрах descent, синхронно с приближением хижины.
@@ -183,9 +233,13 @@ Affogato.Forest = (function () {
 
   function open() {
     if (mode !== 'closed') return;
+    // Снимок главной сцены делаем СРАЗУ — до hideSiteOverlays/lockAtCurrent
+    // и до того, как mode='loading' остановит главный rAF. Это «нулевое»
+    // состояние forest-overlay, которое должно совпадать с тем что юзер видит.
+    applyCanvasSize();
+    captureMainSnapshot();
     mode = 'loading';
     showLoading(true);
-    canvasEl.classList.add('is-visible');
     hideSiteOverlays();
     Affogato.SmoothScroll.lockAtCurrent();
 
@@ -200,10 +254,14 @@ Affogato.Forest = (function () {
       if (Affogato.TitleOverlay && Affogato.TitleOverlay.hide) {
         Affogato.TitleOverlay.hide();
       }
-      applyCanvasSize();
       progress = 0;
+      // renderProgress(0) рисует forest_0001 и поверх — снимок #stage с
+      // альфой ≈ 1: канвас выглядит как точная копия main-сцены. is-visible
+      // включает CSS opacity-фейд, но визуально нет «cut» — под канвасом
+      // те же пиксели.
       renderProgress(0);
       shellEl.classList.remove('is-open');
+      canvasEl.classList.add('is-visible');
 
       startAnim(0, 1, cfg().descentSec || 1.2, function () {
         mode = 'open';

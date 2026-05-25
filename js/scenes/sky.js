@@ -17,8 +17,20 @@ Affogato.Sky = (function () {
   var lastReturnScrollAt = 0;
   var touchLastY = 0;
 
+  // Offscreen-снимок #stage в момент клика «написать». Накладывается поверх
+  // sky-кадра с убывающей альфой на старте descent и нарастающей — на финале
+  // ascent. Таким образом на стыке main-сцена и sky-overlay показывают
+  // идентичные пиксели, и разница ракурсов между диванг-кадром и sky_0001
+  // не видна — нет ни «cut», ни перспективного скачка.
+  var snapshotCanvas = null;
+  var snapshotCtx = null;
+
   var SCRUB_PX_PER_PROGRESS = 1100;
   var PANEL_FADE_START = 0.78;
+
+  // На какой доле прогресса снимок главной сцены полностью «растворяется».
+  // До этой точки sky-кадр виден всё больше, снимок — всё меньше.
+  var SNAPSHOT_FADE_END = 0.1;
 
   function cfg() {
     return Affogato.Config.scenes.sky;
@@ -58,6 +70,34 @@ Affogato.Sky = (function () {
     ctx.drawImage(img, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
   }
 
+  // Снимок текущего состояния главного канваса (#stage). Размеры подгоняем
+  // под наш sky-overlay, чтобы drawImage в renderProgress работал 1:1.
+  // Если канваса нет или drawImage упал — снимка просто не будет, и
+  // renderProgress продолжит без бленда.
+  function captureMainSnapshot() {
+    var stageCanvas = document.getElementById('stage');
+    if (!stageCanvas || !canvasEl.width || !canvasEl.height) {
+      snapshotCanvas = null;
+      return;
+    }
+    if (!snapshotCanvas) {
+      snapshotCanvas = document.createElement('canvas');
+      snapshotCtx = snapshotCanvas.getContext('2d');
+    }
+    snapshotCanvas.width = canvasEl.width;
+    snapshotCanvas.height = canvasEl.height;
+    snapshotCtx.imageSmoothingQuality = 'high';
+    try {
+      snapshotCtx.drawImage(
+        stageCanvas,
+        0, 0, stageCanvas.width, stageCanvas.height,
+        0, 0, snapshotCanvas.width, snapshotCanvas.height
+      );
+    } catch (e) {
+      snapshotCanvas = null;
+    }
+  }
+
   function renderProgress(p) {
     if (!frames || !frames.length) return;
     var c = cfg();
@@ -68,6 +108,21 @@ Affogato.Sky = (function () {
     if (idx > frames.length - 1) idx = frames.length - 1;
 
     drawFrame(frames[idx]);
+
+    // Бесшовный стык: при p≈0 поверх sky-кадра рисуется снимок #stage с
+    // альфой ≈ 1 — sky-overlay показывает ровно то же, что и main под ним,
+    // разрыв перспективы не виден. По мере роста progress снимок гаснет, и
+    // выходим в чистые sky-кадры; на закрытии — симметрично, снимок снова
+    // проявляется к p=0.
+    if (snapshotCanvas) {
+      var snapshotAlpha = clamp01(1 - p / SNAPSHOT_FADE_END);
+      if (snapshotAlpha > 0) {
+        ctx.save();
+        ctx.globalAlpha = snapshotAlpha;
+        ctx.drawImage(snapshotCanvas, 0, 0, canvasEl.width, canvasEl.height);
+        ctx.restore();
+      }
+    }
 
     var overlayOpacity = clamp01((p - PANEL_FADE_START) / (1 - PANEL_FADE_START)).toFixed(3);
     if (panelEl) panelEl.style.opacity = overlayOpacity;
@@ -158,9 +213,13 @@ Affogato.Sky = (function () {
 
   function open() {
     if (mode !== 'closed') return;
+    // Снимок главной сцены делаем СРАЗУ — до hideSiteOverlays/lockAtCurrent
+    // и до того, как mode='loading' остановит главный rAF. Это и есть «нулевое»
+    // состояние sky-overlay, которое должно совпадать с тем что юзер видит.
+    applyCanvasSize();
+    captureMainSnapshot();
     mode = 'loading';
     showLoading(true);
-    canvasEl.classList.add('is-visible');
     hideSiteOverlays();
     Affogato.SmoothScroll.lockAtCurrent();
 
@@ -172,10 +231,14 @@ Affogato.Sky = (function () {
       if (Affogato.TitleOverlay && Affogato.TitleOverlay.hide) {
         Affogato.TitleOverlay.hide();
       }
-      applyCanvasSize();
       progress = 0;
+      // renderProgress(0) рисует sky_0001 и поверх — снимок #stage с альфой ≈ 1:
+      // канвас выглядит как точная копия main-сцены. is-visible включает CSS
+      // opacity-фейд, но визуально юзер не замечает, потому что под ним
+      // абсолютно те же пиксели.
       renderProgress(0);
       shellEl.classList.remove('is-open');
+      canvasEl.classList.add('is-visible');
 
       startAnim(0, 1, cfg().descentSec || 1.2, function () {
         mode = 'open';
