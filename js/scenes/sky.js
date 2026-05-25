@@ -7,8 +7,13 @@ window.Affogato = window.Affogato || {};
 
 Affogato.Sky = (function () {
   var triggerEl, returnEl, shellEl, panelEl, contentEl, canvasEl, loadingEl, ctx;
-  var formEl, emailEl, messageEl, submitBtn, successEl, errorEl;
+  var formEl, emailEl, messageEl, submitBtn, successEl, errorEl, titleEl;
   var sending = false;
+  // Заголовки модальной панели: дефолтный («написать») и пост-сабмит
+  // («отправлено»). Хардкод текста здесь и в [index.html] синхронен —
+  // если меняешь, меняй в обоих местах.
+  var TITLE_DEFAULT = 'написать';
+  var TITLE_SENT = 'отправлено';
 
   // AJAX-endpoint FormSubmit.co. Использует плоский email — el/-алиасы
   // (вида el/woxoro) на AJAX-endpoint отдают 404; их формат предназначен
@@ -420,6 +425,7 @@ Affogato.Sky = (function () {
   function showSuccess() {
     if (contentEl) contentEl.classList.add('is-sent');
     if (successEl) successEl.hidden = false;
+    if (titleEl) titleEl.textContent = TITLE_SENT;
   }
 
   function showError(text) {
@@ -438,6 +444,7 @@ Affogato.Sky = (function () {
     if (formEl) formEl.reset();
     if (contentEl) contentEl.classList.remove('is-sent');
     if (successEl) successEl.hidden = true;
+    if (titleEl) titleEl.textContent = TITLE_DEFAULT;
     hideError();
     sending = false;
     if (submitBtn) {
@@ -478,6 +485,7 @@ Affogato.Sky = (function () {
     submitBtn = formEl ? formEl.querySelector('.sky-form__submit') : null;
     successEl = document.getElementById('sky-form-success');
     errorEl = document.getElementById('sky-form-error');
+    titleEl = shellEl ? shellEl.querySelector('.sky-shell__title') : null;
     if (!triggerEl || !canvasEl) return;
 
     ctx = canvasEl.getContext('2d');
