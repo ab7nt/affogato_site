@@ -1,8 +1,18 @@
 # Intro-видео (законсервировано)
 
-Наработки по проигрыванию `assets/start-video.mp4` поверх первого кадра погружения. Поставлено на полку — переход к видео (fadeIn после возврата) ощущается резковатым из-за того, что между снятием `is-hidden` и реальным декодированием первого кадра есть пауза (50–300мс), видна как «щелчок». Не успел доделать сглаживание (см. «Идеи, которые не успели попробовать» в конце).
+Наработки по проигрыванию `assets/start-video.mp4` поверх первого кадра погружения. Сейчас в коде нет — снова отложено. Краткая история попыток внизу.
 
-## Что было сделано
+## Открытая проблема, из-за которой откатили (вторая попытка, 2026-05-25)
+
+**Видео и первый кадр секвенции имеют разный crop/zoom.** Соотношения сторон близкие (видео 1280×720, кадр 1280×704), но содержимое снято с разным полем зрения: в видео крупный план (деревья по бокам ближе, горизонт ближе), в кадре более широкий план. При снятии видео (fade-out) первый кадр секвенции «отдаляется» — заметный визуальный прыжок.
+
+Это **не лечится CSS/object-fit** — `cover` лишь подгоняет под viewport, но не может добавить контент, которого нет в файле. Нужен один из вариантов:
+
+1. **Пересохранить видео** с тем же полем зрения, что у секвенции (ffmpeg crop+scale или новый экспорт из Premiere). В репозитории уже лежит untracked `assets/start-video2.mp4` (1280×720) — возможно, это уже подходящая версия, надо проверить визуально перед следующим запуском.
+2. **Перерендерить секвенцию** под видео — не вариант, кадров 86, они уже выверены.
+3. CSS-обход (`transform: scale<1` на видео) — даёт пустые края, плохо смотрится.
+
+## Что было сделано (две итерации)
 
 - Видео автозапускается на старте сайта.
 - Замедление через `video.playbackRate` (параметр в config).
@@ -17,19 +27,25 @@
 - `playbackRate` восстанавливается на `loadedmetadata` / `play` / `ratechange` — Safari иначе сбрасывает в 1.
 - После fade освобождается декодер (`removeAttribute('src')` + `load()`) — на iOS висящий `<video>` ест память.
 - `replay()` идемпотентен (страж `if (!isHidden) return`) — auto-replay из `tick` не сбрасывает currentTime каждый кадр.
+- **Fix чёрного flash при fade-in** (вторая итерация): CSS-класс `is-hidden` снимается не сразу при init/replay, а в обработчике события `playing` — когда декодер реально выдал первый кадр. Логический флаг `isHidden` при этом ставится в `false` сразу — иначе tick() при scrollPx≈0 вызывал бы replay() повторно. Pending listener аккуратно снимается в `fadeOut()` (через `clearPendingShow`), иначе видео могло бы внезапно «вернуться» после fadeOut. **Эта правка работала** — flash действительно ушёл.
 
 ## Известные нюансы / открытые вопросы
 
+- **Crop/zoom mismatch видео и секвенции** — см. блок выше. Это и стало причиной второго отката.
 - **Safari жмёт `playbackRate` снизу** ~до 0.5. Если в новом видео нужно сильное замедление — кодируй файл уже медленным (ffmpeg / Premiere).
-- **Чёрный flash при fade-in**: после `replay()` мы сразу снимаем `is-hidden` (opacity 0→1 за `crossfadeSec`), но реальный кадр видео появляется через 50–300мс (буферизация). В этом окне видна тёмная подложка `<video>`. Длинный `crossfadeSec` симптом не лечит. См. идеи ниже.
 - **`object-fit: cover`** — текущее видео обрезается по краям; если новое видео имеет важные элементы у краёв, нужно пересмотреть позиционирование.
 
 ## Идеи, которые не успели попробовать
 
-1. **Ждать `playing` перед снятием `is-hidden`**: `replay()` стартует загрузку, не трогая класс. На событие `playing` снимаем `is-hidden`. Гарантия, что fade-in идёт уже на живом кадре, без чёрного flash. Это лучший вариант.
+1. ~~Ждать `playing` перед снятием `is-hidden`~~ — реализовано во второй итерации, работает.
 2. **Разные длительности fadeIn/fadeOut** — fadeOut при скролле резче (0.3s), fadeIn при возврате длиннее (1.0–1.5s).
 3. **Blur-переход** — `filter: blur(8px)` → `blur(0)` параллельно с opacity. На iOS Safari blur на видео иногда подтормаживает.
 4. **Предзагрузка через preloader** — добавить видео в `Preloader.loadAll()` (chunked fetch + canplaythrough), чтобы старт был мгновенным.
+
+## История попыток
+
+- **Попытка 1** (commit 87121b8 «Заготовка для зацикленного видео в первой сцене»): код добавлен, выявлен «чёрный flash» при fade-in после `replay()` (50–300 мс между play() и первым decoded кадром). Откачено.
+- **Попытка 2** (2026-05-25, до текущего отката): код возвращён по спецификации ниже + применена идея #1 («ждать `playing` перед снятием is-hidden»). Чёрный flash ушёл. Но всплыла другая проблема — разный crop видео и секвенции (см. блок «Открытая проблема»). Откачено снова.
 
 ---
 
@@ -135,6 +151,8 @@ if (Affogato.IntroVideo) Affogato.IntroVideo.replay();
 
 ### 6. `js/intro-video.js` (новый)
 
+Версия с правкой против чёрного flash (ждём `playing` перед снятием `is-hidden`) — её и нужно использовать при следующем возврате:
+
 ```js
 // Intro-видео поверх первого кадра diving. Гаснет на скролле, возвращается
 // при возврате к началу. Не участвует в SceneManager.
@@ -143,8 +161,13 @@ window.Affogato = window.Affogato || {};
 Affogato.IntroVideo = (function () {
   var videoEl;
   var cfg;
+  // isHidden — логический флаг «видео сейчас скрыто и не играет». Не совпадает
+  // с классом is-hidden 1-в-1: пока ждём событие 'playing' после play(), класс
+  // ещё стоит, но isHidden уже false — иначе tick() вызвал бы replay() повторно
+  // на каждом кадре.
   var isHidden = false;
   var fadeTimer = null;
+  var pendingShowListener = null;
 
   function init() {
     videoEl = document.getElementById('intro-video');
@@ -194,16 +217,46 @@ Affogato.IntroVideo = (function () {
       }
     });
 
+    // Стартуем с CSS-классом is-hidden, чтобы первые 50–300 мс буферизации
+    // (до первого реально декодированного кадра) под видео виден тёмный
+    // первый кадр секвенции, а не чёрный «пустой» <video>. Класс снимется
+    // в обработчике 'playing' — тогда fade-in пойдёт уже на живом кадре.
+    videoEl.classList.add('is-hidden');
+    // Логически считаем, что видео уже «играет»: tick() с scrollPx≈0 иначе
+    // вызовет replay() и собьёт init-flow.
+    isHidden = false;
+
     videoEl.src = cfg.videoSrc;
+    schedulePlayingShow();
 
     var playPromise = videoEl.play();
     if (playPromise && typeof playPromise.catch === 'function') {
       playPromise.catch(function () {
-        // iOS autoplay policy / другие ошибки — не оставляем чёрный слой,
-        // сразу открываем первый кадр под видео.
-        fadeOut();
+        // iOS autoplay policy / другие ошибки — отменяем pending show
+        // и помечаем как скрытое, чтобы под видео остался первый кадр.
+        clearPendingShow();
+        isHidden = true;
       });
     }
+  }
+
+  // Однократно слушаем 'playing': момент, когда декодер выдал первый кадр.
+  // Снимаем CSS-класс is-hidden — fade-in идёт уже на живом видео, без
+  // чёрного flash, который раньше был виден после replay().
+  function schedulePlayingShow() {
+    clearPendingShow();
+    pendingShowListener = function () {
+      clearPendingShow();
+      videoEl.classList.remove('is-hidden');
+    };
+    videoEl.addEventListener('playing', pendingShowListener);
+  }
+
+  function clearPendingShow() {
+    if (pendingShowListener && videoEl) {
+      videoEl.removeEventListener('playing', pendingShowListener);
+    }
+    pendingShowListener = null;
   }
 
   function tick(scrollPx) {
@@ -220,6 +273,9 @@ Affogato.IntroVideo = (function () {
 
   function fadeOut() {
     if (isHidden || !videoEl) return;
+    // Если pending show ещё не сработал (видео не успело выйти на 'playing')
+    // — отменяем, иначе он позже снимет is-hidden и видео внезапно «вернётся».
+    clearPendingShow();
     isHidden = true;
     videoEl.classList.add('is-hidden');
 
@@ -252,8 +308,11 @@ Affogato.IntroVideo = (function () {
       window.clearTimeout(fadeTimer);
       fadeTimer = null;
     }
+    // Помечаем «не скрыт» сразу — иначе tick() при scrollPx≈0 вызовет replay()
+    // повторно на каждом кадре. CSS-класс is-hidden снимем только в обработчике
+    // 'playing' (см. schedulePlayingShow): это убирает чёрный flash, который
+    // раньше возникал в окне между play() и появлением первого decoded кадра.
     isHidden = false;
-    videoEl.classList.remove('is-hidden');
     videoEl.style.display = '';
     // Назначаем src заново только если он сброшен (после fadeOut). Иначе
     // повторное присваивание тех же байт триггерит лишний load() и Safari
@@ -262,9 +321,13 @@ Affogato.IntroVideo = (function () {
       videoEl.src = cfg.videoSrc;
     }
     try { videoEl.currentTime = 0; } catch (e) {}
+    schedulePlayingShow();
     var p = videoEl.play();
     if (p && typeof p.catch === 'function') {
-      p.catch(function () { fadeOut(); });
+      p.catch(function () {
+        clearPendingShow();
+        fadeOut();
+      });
     }
   }
 
