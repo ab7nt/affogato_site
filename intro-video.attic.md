@@ -1,40 +1,52 @@
 # Intro-видео (законсервировано)
 
-Наработки по проигрыванию `assets/start-video.mp4` поверх первого кадра погружения. Поставлено на полку — текущее видео не подходит по цвету и зацикленности. Когда будет новое — вернуть по этой инструкции.
+Наработки по проигрыванию `assets/start-video.mp4` поверх первого кадра погружения. Поставлено на полку — переход к видео (fadeIn после возврата) ощущается резковатым из-за того, что между снятием `is-hidden` и реальным декодированием первого кадра есть пауза (50–300мс), видна как «щелчок». Не успел доделать сглаживание (см. «Идеи, которые не успели попробовать» в конце).
 
 ## Что было сделано
 
-- Видео автоматически проигрывается на старте (один раз).
+- Видео автозапускается на старте сайта.
 - Замедление через `video.playbackRate` (параметр в config).
-- Плавный crossfade в первый кадр секвенции: стартует за `crossfadeSec` до конца видео (по `timeupdate`, с учётом `playbackRate` в реальном времени) либо при первом скролле (> `scrollThresholdPx`).
-- Перезапуск при возврате к началу через `returnToSurface` — `replay()` под прикрытием `transit-overlay`.
-- iOS: `playsinline` + `muted` + `autoplay`-fallback (если `play()` отказывается — fade сразу, без чёрного слоя).
-- `playbackRate` восстанавливается на `loadedmetadata` / `play` / `ratechange` — Safari иначе сбрасывает.
-- После fade освобождается декодер (`removeAttribute('src')` + `load()`).
+- **loop=true** — крутится бесконечно до первого скролла.
+- Цветокор через CSS-фильтр (`config.scenes.diving.intro.filter`), применяется как `filter: var(--intro-filter)` на `.intro-video`. Крутится вживую в DevTools:
+  ```js
+  document.documentElement.style.setProperty('--intro-filter', 'brightness(0.9) saturate(0.8)')
+  ```
+- Fade-out по первому скроллу (`scrollPx > scrollThresholdPx`), fade-in при возврате к `scrollPx ≤ threshold`. Длительность — `crossfadeSec`.
+- Перезапуск (`replay()`) при выходе из плеера (`closePlayer`) и при `returnToSurface` — под прикрытием `transit-overlay`.
+- iOS: `playsinline` + `muted` + `autoplay`-fallback (если `play()` отклоняется — fade сразу).
+- `playbackRate` восстанавливается на `loadedmetadata` / `play` / `ratechange` — Safari иначе сбрасывает в 1.
+- После fade освобождается декодер (`removeAttribute('src')` + `load()`) — на iOS висящий `<video>` ест память.
+- `replay()` идемпотентен (страж `if (!isHidden) return`) — auto-replay из `tick` не сбрасывает currentTime каждый кадр.
 
-## Известные нюансы
+## Известные нюансы / открытые вопросы
 
-- Safari жмёт `playbackRate` снизу ~до 0.5 — если в новом видео нужно сильное замедление, кодируй файл уже медленным (через ffmpeg / Premiere).
-- Видео должно либо вписываться в стилистику первого кадра секвенции (минимум разница цвета/композиции), либо последний кадр должен идеально совпадать с `diving_under_water_frame_0001.jpg`, чтобы crossfade не «щёлкал».
-- Длительность зацикливания/loop ещё не реализована — текущая версия играет один раз. Если новое видео — короткий цикл, добавь `videoEl.loop = true` и убери `ended`-fadeOut + `timeupdate`-fadeOut по `realRemaining`.
+- **Safari жмёт `playbackRate` снизу** ~до 0.5. Если в новом видео нужно сильное замедление — кодируй файл уже медленным (ffmpeg / Premiere).
+- **Чёрный flash при fade-in**: после `replay()` мы сразу снимаем `is-hidden` (opacity 0→1 за `crossfadeSec`), но реальный кадр видео появляется через 50–300мс (буферизация). В этом окне видна тёмная подложка `<video>`. Длинный `crossfadeSec` симптом не лечит. См. идеи ниже.
+- **`object-fit: cover`** — текущее видео обрезается по краям; если новое видео имеет важные элементы у краёв, нужно пересмотреть позиционирование.
+
+## Идеи, которые не успели попробовать
+
+1. **Ждать `playing` перед снятием `is-hidden`**: `replay()` стартует загрузку, не трогая класс. На событие `playing` снимаем `is-hidden`. Гарантия, что fade-in идёт уже на живом кадре, без чёрного flash. Это лучший вариант.
+2. **Разные длительности fadeIn/fadeOut** — fadeOut при скролле резче (0.3s), fadeIn при возврате длиннее (1.0–1.5s).
+3. **Blur-переход** — `filter: blur(8px)` → `blur(0)` параллельно с opacity. На iOS Safari blur на видео иногда подтормаживает.
+4. **Предзагрузка через preloader** — добавить видео в `Preloader.loadAll()` (chunked fetch + canplaythrough), чтобы старт был мгновенным.
 
 ---
 
 ## Как вернуть в проект
 
-Файлы, которые нужно тронуть: `index.html`, `js/config.js`, `styles.css`, `js/app.js`, и создать заново `js/intro-video.js`.
+Файлы: `index.html`, `js/config.js`, `styles.css`, `js/app.js`, `js/player.js`, и создать `js/intro-video.js`.
 
 ### 1. `index.html`
 
 После `<canvas id="stage"></canvas>` (перед `<nav id="top-nav">`):
 
 ```html
-<!-- Intro-видео поверх первого кадра погружения. Гаснет на `ended` или при
-     первом скролле, см. js/intro-video.js. -->
+<!-- Intro-видео поверх первого кадра погружения. Гаснет на скролле, см. js/intro-video.js. -->
 <video id="intro-video" class="intro-video" playsinline muted preload="auto" aria-hidden="true"></video>
 ```
 
-Перед `<script src="js/app.js"></script>`:
+Перед `<script src="js/player.js"></script>`:
 
 ```html
 <script src="js/intro-video.js"></script>
@@ -45,14 +57,18 @@
 В `scenes.diving`, рядом с `fadeOutMax`:
 
 ```js
-// Intro-видео: проигрывается один раз поверх первого кадра при заходе
-// на сайт; гаснет либо по `ended`, либо при первом скролле. Логика —
-// в js/intro-video.js. Не участвует в SceneManager.
+// Intro-видео: проигрывается циклом поверх первого кадра при заходе на сайт;
+// гаснет при первом скролле, восстанавливается при возврате к началу.
+// Логика — в js/intro-video.js. Не участвует в SceneManager.
 intro: {
   videoSrc: 'assets/start-video.mp4',
-  playbackRate: 1 / 6,    // замедление; Safari зажимает ниже ~0.5
-  crossfadeSec: 0.3,      // длительность fade-out
-  scrollThresholdPx: 4,   // после какого scrollPx прервать видео
+  playbackRate: 1,        // 1 = оригинал; Safari зажимает ниже ~0.5
+  crossfadeSec: 0.3,      // длительность fadeIn/fadeOut
+  scrollThresholdPx: 4,   // ниже этого scrollPx — видео видно; выше — гаснет
+  // Цветокор: применяется как CSS filter к <video>. Подгоняем палитру под
+  // первый кадр секвенции, чтобы переход не «щёлкал». Любая валидная цепочка
+  // CSS-функций filter: brightness/contrast/saturate/hue-rotate/sepia/blur.
+  filter: 'brightness(0.85) contrast(1.05) saturate(0.85)',
 },
 ```
 
@@ -61,10 +77,9 @@ intro: {
 После блока `body.ready #stage { opacity: 1; }`:
 
 ```css
-/* Intro-видео: лежит поверх #stage (z-index 0) до окончания или первого
-   скролла, потом класс is-hidden плавно опускает opacity до 0 и под собой
-   проявляется первый кадр секвенции, нарисованный в canvas. Под titles (4)
-   и UI (5) — они должны быть видны поверх видео. */
+/* Intro-видео: лежит поверх #stage (z-index 0) до первого скролла, потом
+   класс is-hidden плавно опускает opacity до 0 и под собой проявляется
+   первый кадр секвенции, нарисованный в canvas. Под titles (4) и UI (5). */
 .intro-video {
   position: fixed;
   inset: 0;
@@ -74,6 +89,9 @@ intro: {
   z-index: 2;
   opacity: 1;
   pointer-events: none;
+  /* Цветокор: значение задаётся из config.scenes.diving.intro.filter
+     через CSS-переменную (см. js/intro-video.js). */
+  filter: var(--intro-filter, none);
   transition: opacity var(--intro-fade-sec, 0.3s) ease;
 }
 
@@ -91,13 +109,13 @@ intro: {
 if (Affogato.IntroVideo) Affogato.IntroVideo.init();
 ```
 
-В функции `loop()`, сразу после `var scrollPx = Affogato.SmoothScroll.update();`:
+В `loop()`, сразу после `var scrollPx = Affogato.SmoothScroll.update();`:
 
 ```js
 if (Affogato.IntroVideo) Affogato.IntroVideo.tick(scrollPx);
 ```
 
-В `returnToSurface()`, внутри первого `setTimeout` (рядом с `SM.render(0)` после `stoneVideo.hide()`):
+В `returnToSurface()`, внутри первого `setTimeout` (после `SM.render(0)`):
 
 ```js
 // Перезапускаем intro-видео под transit-overlay (он ещё тёмный):
@@ -105,11 +123,21 @@ if (Affogato.IntroVideo) Affogato.IntroVideo.tick(scrollPx);
 if (Affogato.IntroVideo) Affogato.IntroVideo.replay();
 ```
 
-### 5. `js/intro-video.js` (новый)
+### 5. `js/player.js`
+
+В `closePlayer()`, внутри `setTimeout`, после `Affogato.TitleOverlay.reset();` и ДО `Affogato.Transit.stop();`:
 
 ```js
-// Intro-видео поверх первого кадра diving. Гаснет либо по `ended`, либо
-// при первом скролле. Не участвует в SceneManager.
+// Перезапускаем intro-видео до Transit.stop(): пока overlay ещё гасит
+// экран, видео успевает стартовать и появиться плавно.
+if (Affogato.IntroVideo) Affogato.IntroVideo.replay();
+```
+
+### 6. `js/intro-video.js` (новый)
+
+```js
+// Intro-видео поверх первого кадра diving. Гаснет на скролле, возвращается
+// при возврате к началу. Не участвует в SceneManager.
 window.Affogato = window.Affogato || {};
 
 Affogato.IntroVideo = (function () {
@@ -132,6 +160,18 @@ Affogato.IntroVideo = (function () {
     // CSS-переменная управляет длительностью CSS transition opacity.
     var fadeSec = cfg.crossfadeSec != null ? cfg.crossfadeSec : 0.3;
     document.documentElement.style.setProperty('--intro-fade-sec', fadeSec + 's');
+
+    // Цветовой фильтр для видео — применяется через CSS var --intro-filter
+    // (см. .intro-video в styles.css). В DevTools крутить можно так:
+    //   document.documentElement.style.setProperty('--intro-filter', 'brightness(0.9) saturate(0.8)')
+    if (cfg.filter) {
+      document.documentElement.style.setProperty('--intro-filter', cfg.filter);
+    }
+
+    // Зацикливаем: видео крутится, пока пользователь не начнёт скроллить.
+    // С loop=true события 'ended' не возникают, поэтому listener'ы по
+    // окончанию видео не нужны.
+    videoEl.loop = true;
 
     var rate = cfg.playbackRate || 1;
 
@@ -156,25 +196,6 @@ Affogato.IntroVideo = (function () {
 
     videoEl.src = cfg.videoSrc;
 
-    // Запускаем fade ЗА crossfadeSec до конца — иначе пользователь видит
-    // последний кадр, а лишь потом он начинает гаснуть. Считаем оставшееся в
-    // реальном времени (с учётом playbackRate): при медленном rate видео-секунд
-    // до конца остаётся меньше, чем реальных секунд.
-    videoEl.addEventListener('timeupdate', function () {
-      if (isHidden) return;
-      var dur = videoEl.duration;
-      if (!Number.isFinite(dur) || dur <= 0) return;
-      var fadeSec = cfg.crossfadeSec != null ? cfg.crossfadeSec : 0.3;
-      var rate = Math.max(0.01, videoEl.playbackRate);
-      var realRemaining = (dur - videoEl.currentTime) / rate;
-      if (realRemaining <= fadeSec) fadeOut();
-    });
-    // На случай, если timeupdate не успел тикнуть до ended (короткие видео,
-    // большой rate) — дублирующая страховка.
-    videoEl.addEventListener('ended', function () {
-      fadeOut();
-    });
-
     var playPromise = videoEl.play();
     if (playPromise && typeof playPromise.catch === 'function') {
       playPromise.catch(function () {
@@ -186,9 +207,15 @@ Affogato.IntroVideo = (function () {
   }
 
   function tick(scrollPx) {
-    if (isHidden || !cfg) return;
+    if (!cfg) return;
     var threshold = cfg.scrollThresholdPx != null ? cfg.scrollThresholdPx : 4;
-    if (scrollPx > threshold) fadeOut();
+    if (scrollPx > threshold) {
+      if (!isHidden) fadeOut();
+    } else {
+      // Пользователь докрутил скроллом обратно к началу — возвращаем видео.
+      // replay() идемпотентен (страж по isHidden), повторных play не будет.
+      if (isHidden) replay();
+    }
   }
 
   function fadeOut() {
@@ -214,11 +241,13 @@ Affogato.IntroVideo = (function () {
     videoEl.style.display = 'none';
   }
 
-  // Перезапуск при возврате к началу (returnToSurface в app.js). После
-  // fadeOut мы освободили декодер (removeAttribute('src') + load()), поэтому
-  // здесь заново выставляем src и стартуем воспроизведение с нуля.
+  // Перезапуск при возврате к началу (returnToSurface в app.js, closePlayer
+  // в player.js, auto-replay из tick при scroll-back). После fadeOut мы
+  // освободили декодер (removeAttribute('src') + load()), поэтому здесь
+  // заново выставляем src и стартуем воспроизведение с нуля.
   function replay() {
     if (!videoEl || !cfg || !cfg.videoSrc) return;
+    if (!isHidden) return; // уже играет — не сбрасываем currentTime каждый tick
     if (fadeTimer) {
       window.clearTimeout(fadeTimer);
       fadeTimer = null;
