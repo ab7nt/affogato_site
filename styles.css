@@ -1236,9 +1236,9 @@ body.in-forest-mode .titles {
   gap: clamp(0.8rem, 1.8vw, 1.2rem);
 }
 
+.sky-form__input,
 .sky-form__textarea {
   width: 100%;
-  min-height: clamp(7rem, 18vh, 11rem);
   padding: clamp(0.7rem, 1.6vw, 1rem);
   border: 1px solid rgba(232, 236, 229, 0.22);
   border-radius: clamp(0.4rem, 1vw, 0.7rem);
@@ -1247,18 +1247,35 @@ body.in-forest-mode .titles {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: clamp(0.95rem, 1.6vw, 1.05rem);
   line-height: 1.5;
-  resize: vertical;
   transition: border-color 0.25s ease, background 0.25s ease;
 }
 
+.sky-form__textarea {
+  min-height: clamp(7rem, 18vh, 11rem);
+  resize: vertical;
+}
+
+.sky-form__input::placeholder,
 .sky-form__textarea::placeholder {
   color: rgba(232, 236, 229, 0.36);
 }
 
+.sky-form__input:focus,
 .sky-form__textarea:focus {
   outline: none;
   border-color: rgba(232, 236, 229, 0.5);
   background: rgba(7, 9, 12, 0.55);
+}
+
+/* Honeypot — спрятан от глаз и скринридеров, но в DOM присутствует;
+   боты часто заполняют все поля подряд, FormSubmit отбрасывает такие. */
+.sky-form__honey {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .sky-form__submit {
@@ -1290,6 +1307,51 @@ body.in-forest-mode .titles {
 .sky-form__submit:focus-visible {
   outline: 1px solid rgba(232, 236, 229, 0.55);
   outline-offset: 4px;
+}
+
+.sky-form__submit:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.sky-form__submit:disabled:hover {
+  color: rgba(232, 236, 229, 0.82);
+  border-color: rgba(232, 236, 229, 0.32);
+  background: transparent;
+}
+
+/* Состояние «отправлено»: форма прячется, появляется подтверждение.
+   Переключается классом is-sent на .sky-shell__content из sky.js. */
+.sky-shell__content.is-sent .sky-form {
+  display: none;
+}
+
+.sky-shell__content.is-sent .sky-form__success {
+  display: block;
+}
+
+.sky-form__success {
+  color: rgba(235, 238, 232, 0.94);
+  font-family: 'Poiret One', system-ui, sans-serif;
+  font-size: clamp(1.25rem, 2.4vw, 1.6rem);
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  text-align: center;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
+  padding: clamp(1rem, 2vw, 1.6rem) 0;
+}
+
+.sky-form__error {
+  margin-top: clamp(0.4rem, 1vw, 0.7rem);
+  padding: clamp(0.45rem, 1vw, 0.6rem) clamp(0.7rem, 1.4vw, 0.95rem);
+  border: 1px solid rgba(220, 120, 100, 0.4);
+  border-radius: clamp(0.35rem, 0.9vw, 0.6rem);
+  background: rgba(70, 30, 28, 0.18);
+  color: rgba(232, 200, 196, 0.92);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: clamp(0.85rem, 1.4vw, 0.95rem);
+  line-height: 1.45;
+  text-align: center;
 }
 
 .sky-loading {

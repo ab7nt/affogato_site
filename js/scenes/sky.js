@@ -6,7 +6,16 @@
 window.Affogato = window.Affogato || {};
 
 Affogato.Sky = (function () {
-  var triggerEl, returnEl, shellEl, panelEl, contentEl, canvasEl, loadingEl, formEl, ctx;
+  var triggerEl, returnEl, shellEl, panelEl, contentEl, canvasEl, loadingEl, ctx;
+  var formEl, emailEl, messageEl, submitBtn, successEl, errorEl;
+  var sending = false;
+
+  // AJAX-endpoint FormSubmit.co. Hash получают на formsubmit.co (без
+  // регистрации) — это алиас для affogato.sound@gmail.com. До первого
+  // подтверждения (FormSubmit пришлёт письмо со ссылкой) запросы будут
+  // отвечать success:false. После — все письма с формы идут на почту.
+  var FORMSUBMIT_ENDPOINT = 'https://formsubmit.co/el/woxoro';
+
   var frames = null;
   var loading = false;
   var mode = 'closed'; // 'closed' | 'loading' | 'descending' | 'open' | 'ascending'
@@ -281,6 +290,9 @@ Affogato.Sky = (function () {
       Affogato.SmoothScroll.unlock();
       mode = 'closed';
       progress = 0;
+      // Сброс формы — при следующем открытии «написать» юзер должен видеть
+      // чистый textarea/email, а не результат предыдущей отправки.
+      resetForm();
     });
   }
 
@@ -360,6 +372,80 @@ Affogato.Sky = (function () {
     collectReturnScroll(dy * 2.2);
   }
 
+  // ─────────────────────────── форма ──
+
+  function onFormSubmit(e) {
+    e.preventDefault();
+    if (sending) return;
+    var message = ((messageEl && messageEl.value) || '').trim();
+    if (!message) {
+      if (messageEl) messageEl.focus();
+      return;
+    }
+
+    sending = true;
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'отправляется…';
+    }
+    hideError();
+
+    var fd = new FormData(formEl);
+    var email = ((emailEl && emailEl.value) || '').trim();
+    if (email) fd.set('_replyto', email);
+
+    fetch(FORMSUBMIT_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' },
+      body: fd,
+    }).then(function (res) {
+      return res.json().catch(function () { return null; });
+    }).then(function (data) {
+      if (data && String(data.success) === 'true') {
+        showSuccess();
+      } else {
+        showError((data && data.message) || 'не получилось отправить, попробуй ещё раз');
+      }
+    }).catch(function () {
+      showError('нет связи — проверь интернет и попробуй ещё раз');
+    }).then(function () {
+      sending = false;
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'отправить';
+      }
+    });
+  }
+
+  function showSuccess() {
+    if (contentEl) contentEl.classList.add('is-sent');
+    if (successEl) successEl.hidden = false;
+  }
+
+  function showError(text) {
+    if (!errorEl) return;
+    errorEl.textContent = text;
+    errorEl.hidden = false;
+  }
+
+  function hideError() {
+    if (!errorEl) return;
+    errorEl.hidden = true;
+    errorEl.textContent = '';
+  }
+
+  function resetForm() {
+    if (formEl) formEl.reset();
+    if (contentEl) contentEl.classList.remove('is-sent');
+    if (successEl) successEl.hidden = true;
+    hideError();
+    sending = false;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'отправить';
+    }
+  }
+
   // ────────────────────────────── init ──
 
   function bindEvents() {
@@ -371,10 +457,7 @@ Affogato.Sky = (function () {
       close();
     });
     if (formEl) {
-      formEl.addEventListener('submit', function (e) {
-        e.preventDefault();
-        // TODO: интеграция с реальной отправкой письма
-      });
+      formEl.addEventListener('submit', onFormSubmit);
     }
     window.addEventListener('wheel', onWheel, { passive: false });
     window.addEventListener('touchstart', onTouchStart, { passive: true });
@@ -390,6 +473,11 @@ Affogato.Sky = (function () {
     canvasEl = document.getElementById('sky-overlay');
     loadingEl = document.getElementById('sky-loading');
     formEl = document.getElementById('sky-form');
+    emailEl = document.getElementById('sky-form-email');
+    messageEl = document.getElementById('sky-form-message');
+    submitBtn = formEl ? formEl.querySelector('.sky-form__submit') : null;
+    successEl = document.getElementById('sky-form-success');
+    errorEl = document.getElementById('sky-form-error');
     if (!triggerEl || !canvasEl) return;
 
     ctx = canvasEl.getContext('2d');

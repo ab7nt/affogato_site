@@ -80,6 +80,14 @@
     <div class="sky-shell__content">
       <h2 class="sky-shell__title">написать</h2>
       <form id="sky-form" class="sky-form" novalidate>
+        <input
+          id="sky-form-email"
+          class="sky-form__input"
+          type="email"
+          name="email"
+          placeholder="ваш email (необязательно)"
+          autocomplete="email"
+        >
         <textarea
           id="sky-form-message"
           class="sky-form__textarea"
@@ -88,8 +96,25 @@
           placeholder="ваше сообщение"
           required
         ></textarea>
+
+        <input type="hidden" name="_subject" value="Письмо с сайта Аффогато">
+        <input type="hidden" name="_captcha" value="false">
+        <input type="hidden" name="_template" value="table">
+        <input
+          type="text"
+          name="_honey"
+          class="sky-form__honey"
+          tabindex="-1"
+          autocomplete="off"
+          aria-hidden="true"
+        >
+
         <button type="submit" class="sky-form__submit">отправить</button>
       </form>
+      <div id="sky-form-success" class="sky-form__success" aria-live="polite" hidden>
+        спасибо, твоё письмо в пути
+      </div>
+      <div id="sky-form-error" class="sky-form__error" aria-live="polite" hidden></div>
     </div>
   </div>
   <button id="sky-return" class="return-hint return-hint--sky" type="button" aria-label="Вернуться">
