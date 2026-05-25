@@ -99,10 +99,15 @@
     SM.layout(); // задаёт высоту body и размер canvas
 
     // Локальный плеер: «послушать» в верхней навигации перехватывается.
-    var listenLink = topNav ? topNav.querySelector('a') : null;
+    // Берём по id, а не первой <a> — рядом теперь есть «что это?», и порядок
+    // может измениться.
+    var listenLink = document.getElementById('listen-link');
     if (listenLink && Affogato.Player) {
       Affogato.Player.init({ triggerEl: listenLink, frames: frames });
     }
+
+    // Модальная сцена «о проекте» (лес). Триггер и кадры — внутри модуля.
+    if (Affogato.Forest) Affogato.Forest.init();
 
     function getForwardTransitionTarget(scrollPx) {
       var finalIndex = SM.sceneIndex('stoneVideo');
@@ -149,7 +154,8 @@
 
     scrollHint.addEventListener('click', function () {
       var playerActive = Affogato.Player && Affogato.Player.isActive();
-      if (isReturningToStart || playerActive) return;
+      var forestActive = Affogato.Forest && Affogato.Forest.isActive();
+      if (isReturningToStart || playerActive || forestActive) return;
       var state = Affogato.SmoothScroll.getState ? Affogato.SmoothScroll.getState() : null;
       if (state && state.autoTransitioning) return;
       var current = state ? state.current : (window.scrollY || window.pageYOffset || 0);
@@ -254,7 +260,8 @@
       // updateTopNav/updateScrollHint перезаписывают inline opacity=0 и top-nav
       // успевает плавно «вернуться» поверх угасающего transit-canvas.
       var playerActive = Affogato.Player && Affogato.Player.isActive();
-      if (isReturningToStart || playerActive) {
+      var forestActive = Affogato.Forest && Affogato.Forest.isActive();
+      if (isReturningToStart || playerActive || forestActive) {
         window.setTimeout(function () {
           requestAnimationFrame(loop);
         }, (Affogato.Config.performance && Affogato.Config.performance.sleepMs) || 180);

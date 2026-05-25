@@ -22,7 +22,8 @@
   <canvas id="stage"></canvas>
 
   <nav id="top-nav" class="top-nav" aria-label="Основная навигация">
-    <a href="https://band.link/affogato" target="_blank" rel="noopener noreferrer">послушать</a>
+    <button id="forest-trigger" class="top-nav__btn" type="button">что это?</button>
+    <a id="listen-link" href="https://band.link/affogato" target="_blank" rel="noopener noreferrer">послушать</a>
     <a href="mailto:affogato.sound@gmail.com">написать</a>
   </nav>
 
@@ -54,6 +55,22 @@
 
   <canvas id="transit-overlay" class="transit-overlay" aria-hidden="true"></canvas>
 
+  <canvas id="forest-overlay" class="forest-overlay" aria-hidden="true"></canvas>
+  <div id="forest-shell" class="forest-shell">
+    <div class="forest-shell__panel" aria-hidden="true"></div>
+    <div class="forest-shell__content">
+      <h2 class="forest-shell__title">АФФОГАТО</h2>
+      <p class="forest-shell__text">Акустический проект, выросший из старых тетрадей и долгих пауз. В&nbsp;альбоме «после падения» — четыре песни: стихи 2005–2026 годов, мелодии — на стыке гитарных проб и экспериментов с&nbsp;нейросетями.</p>
+      <p class="forest-shell__text">Одни композиции зазвучали впервые, другие переоткрылись спустя двадцать лет. Каждая родилась в&nbsp;своё время — и&nbsp;обрела голос только сейчас.</p>
+    </div>
+  </div>
+  <button id="forest-return" class="return-hint return-hint--forest" type="button" aria-label="Вернуться">
+    <span class="return-hint__arrow" aria-hidden="true"></span>
+    <span class="return-hint__sub">лучше скроллить, но можно и нажать</span>
+    <span class="return-hint__label">обратно</span>
+  </button>
+  <div id="forest-loading" class="forest-loading" aria-hidden="true">загрузка</div>
+
   <!-- Classic-скрипты по порядку: ES-модули не работают через file:// в Chrome.
        Общий неймспейс — window.Affogato. -->
   <script src="js/config.js"></script>
@@ -67,6 +84,7 @@
   <script src="js/scenes/diving.js"></script>
   <script src="js/scenes/polaroid.js"></script>
   <script src="js/scenes/stone-video.js"></script>
+  <script src="js/scenes/forest.js"></script>
   <script src="js/player.js"></script>
   <script src="js/app.js"></script>
 </body>

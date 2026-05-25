@@ -55,6 +55,7 @@ body.ready #stage {
   font-size: clamp(1.05rem, 2vw, 1.35rem);
   line-height: 1;
   letter-spacing: 0;
+  white-space: nowrap;
   text-decoration: none;
   text-shadow: 0 2px 16px rgba(0, 0, 0, 0.42);
   transition: color 0.25s ease, opacity 0.25s ease;
@@ -962,4 +963,189 @@ body.is-returning-to-start .return-hint--polaroid {
     font-size: 0.85rem;
     line-height: 1.42;
   }
+}
+
+/* ───────────────────────────────────────────── forest «о проекте» ─── */
+
+/* Кнопка «что это?» в верхней навигации — выглядит как соседние <a>. */
+.top-nav__btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: rgba(232, 236, 229, 0.78);
+  font-family: 'Poiret One', system-ui, sans-serif;
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.42);
+  transition: color 0.25s ease, opacity 0.25s ease;
+}
+
+.top-nav__btn:hover {
+  color: rgba(255, 255, 255, 0.94);
+}
+
+.top-nav__btn:focus-visible {
+  outline: 1px solid rgba(232, 236, 229, 0.52);
+  outline-offset: 0.45rem;
+}
+
+/* Полноэкранный canvas под кадры леса — поведение аналогично transit-overlay. */
+.forest-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.forest-overlay.is-visible {
+  opacity: 1;
+}
+
+/* Контент-обёртка «о проекте» поверх canvas: центральная треть экрана.
+   Подложка раскрывается вертикально из центра (scaleY), затем с лёгкой
+   задержкой проявляется текст. Управляется классом .is-open на самом
+   контейнере (ставится и снимается в forest.js синхронно с прогрессом). */
+.forest-shell {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: 22;
+  width: clamp(280px, 33vw, 520px);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  font-family: 'Poiret One', system-ui, sans-serif;
+  text-align: center;
+}
+
+/* Полупрозрачная тёмная подложка под текст. Opacity подложки полностью
+   управляется из forest.js как функция от прогресса — она начинает
+   проявляться уже на последних кадрах descent и так же гаснет при
+   скраббинге назад. CSS-transition нет: каждый rAF-кадр сам перерисовывает
+   нужное значение, и transition только мешал бы. */
+.forest-shell__panel {
+  position: absolute;
+  inset: 0;
+  background: rgba(7, 9, 12, 0.62);
+  border: 1px solid rgba(232, 236, 229, 0.14);
+  border-radius: clamp(0.6rem, 1.4vw, 1.1rem);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  will-change: opacity;
+}
+
+/* Текст внутри подложки. Opacity ставится из forest.js синхронно с
+   подложкой (как функция от прогресса), без CSS-transition. */
+.forest-shell__content {
+  position: relative;
+  padding: clamp(1.4rem, 3vw, 2.6rem) clamp(1.2rem, 3vw, 2.2rem);
+  opacity: 0;
+  will-change: opacity;
+}
+
+.forest-shell__title {
+  margin: 0 0 clamp(0.7rem, 1.6vw, 1.1rem);
+  color: rgba(235, 238, 232, 0.94);
+  font-size: clamp(1.9rem, 4.2vw, 2.8rem);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
+}
+
+.forest-shell__text {
+  margin: 0 0 clamp(0.5rem, 1.2vw, 0.85rem);
+  color: rgba(228, 232, 226, 0.82);
+  font-size: clamp(0.95rem, 1.7vw, 1.1rem);
+  line-height: 1.55;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.45);
+}
+
+.forest-shell__text:last-child {
+  margin-bottom: 0;
+}
+
+/* Индикатор загрузки кадров перед первым показом сцены. */
+.forest-loading {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: 23;
+  transform: translate(-50%, -50%);
+  color: rgba(232, 236, 229, 0.82);
+  font-family: 'Poiret One', system-ui, sans-serif;
+  font-size: clamp(1rem, 2vw, 1.3rem);
+  letter-spacing: 0.05em;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.forest-loading.is-visible {
+  opacity: 1;
+}
+
+/* Кнопка «обратно» — визуально как «погрузиться»: снизу, со стрелкой вниз,
+   порядок label → sub → arrow. Видна только в режиме forest. Свой быстрый
+   transition (0.35s), чтобы при клике уходила почти сразу — синхронно с
+   .forest-shell.is-open, а не висела до конца обратной анимации кадров. */
+.return-hint--forest {
+  top: auto;
+  bottom: clamp(1.2rem, 4vw, 2.4rem);
+  transition: opacity 0.35s ease, color 0.25s ease;
+}
+
+.return-hint--forest .return-hint__label {
+  order: 1;
+  margin-top: 0;
+}
+
+.return-hint--forest .return-hint__sub {
+  order: 2;
+}
+
+.return-hint--forest .return-hint__arrow {
+  order: 3;
+  margin-top: -0.4rem;
+  border-left: 0;
+  border-top: 0;
+  border-right: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  animation: scroll-hint-arrow 1.8s ease-in-out infinite;
+}
+
+/* Кнопка «обратно» появляется не одновременно с входом в режим, а только
+   когда авто-проигрывание дошло до финального кадра. Управляется отдельным
+   классом на body — body.forest-content-open. */
+body.forest-content-open .return-hint--forest {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* В режиме forest жёстко прячем основные подсказки/навигацию. Главный
+   rAF-цикл там стоит, поэтому inline opacity не успевает обновиться сам. */
+body.in-forest-mode .top-nav,
+body.in-forest-mode .scroll-hint,
+body.in-forest-mode .surface-hint,
+body.in-forest-mode .return-hint--polaroid,
+body.in-forest-mode .return-hint--player,
+body.in-forest-mode .player-shell {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* В режиме forest скрываем DOM-титры «АФФОГАТО»/«после падения» — они не
+   относятся к контенту «о проекте». */
+body.in-forest-mode .titles {
+  opacity: 0;
 }
