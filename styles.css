@@ -806,12 +806,42 @@ body.is-returning-to-start .return-hint--polaroid {
   justify-self: center;
   filter: drop-shadow(0 14px 40px rgba(0, 0, 0, 0.5));
   will-change: transform;
+  perspective: 900px;
+  transform-style: preserve-3d;
+  pointer-events: auto;
+  touch-action: pan-y;
 }
 
 .polaroid__image {
   display: block;
   width: 100%;
   height: auto;
+}
+
+/* Псевдоэлемент рисуется только когда tilt активен. Маскируется альфой того же PNG,
+   что и обложка — иначе прямоугольный composite-слой светил бы сквозь потёртые края. */
+.polaroid.is-tilting::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--tilt-strength, 0);
+  background: conic-gradient(
+    from calc(var(--tilt-angle, 0deg) + 90deg),
+    rgba(255, 255, 255, 0.18) 0deg,
+    rgba(0, 0, 0, 0.28) 180deg,
+    rgba(255, 255, 255, 0.18) 360deg
+  );
+  -webkit-mask: var(--cover-url) center / 100% 100% no-repeat;
+          mask: var(--cover-url) center / 100% 100% no-repeat;
+  mix-blend-mode: soft-light;
+  transition: opacity 220ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .polaroid.is-tilting::after {
+    opacity: 0 !important;
+  }
 }
 
 .song-note {
