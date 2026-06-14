@@ -119,28 +119,28 @@ Affogato.Config = {
         {
           title: 'Пресловутая гордость',
           year: '1999',
-          cover: 'assets/song-covers/the-proverbial-pride.png',
+          cover: 'assets/song-covers/the-proverbial-pride.webp',
           audio: 'assets/songs/the-proverbial-pride.mp3',
           note: 'Мотив песни кардинально изменился из-за неожиданного эксперимента с нейросетями, в то время как текст остался почти неизменным. Первоначально композиция имела более плавный и протяжный характер с длинными завываниями между куплетами.',
         },
         {
           title: 'После падения',
           year: '2003-2026',
-          cover: 'assets/song-covers/after-the-fall.png',
+          cover: 'assets/song-covers/after-the-fall.webp',
           audio: 'assets/songs/after-the-fall.m4a',
           note: 'Сначала был просто немного слащавый стих, написанный в 2005 г. А в 2026 г. после экспериментов с теми же нейросетями песня обрела мотив, а текст был переработан и дополнен.',
         },
         {
           title: 'Вечная жизнь',
           year: '2025-2026',
-          cover: 'assets/song-covers/eternal-life.png',
+          cover: 'assets/song-covers/eternal-life.webp',
           audio: 'assets/songs/eternal-life.mp3',
           note: 'Год я мысленно напевал четверостишье о вечности. Затем, когда менял струны на гитаре, решил попробовать положить его на музыку. Для куплета я использовал уже готовые строки другого стихотворения.',
         },
         {
           title: 'Цвела земля',
           year: '2005-2006',
-          cover: 'assets/song-covers/the-Earth-was-blooming.png',
+          cover: 'assets/song-covers/the-Earth-was-blooming.webp',
           audio: 'assets/songs/the-Earth-was-blooming.m4a',
           note: 'Песня рождалась исключительно в воображении на протяжении года. Спустя некоторое время был добавлен финальный куплет, однако он не был включён в окончательную версию.',
         },
@@ -202,7 +202,7 @@ Affogato.Config = {
 
   // Локальный плеер альбома (js/player.js).
   player: {
-    stillSrc: 'assets/stone-still.png', // стоп-кадр со дна, фон плеера
+    stillSrc: 'assets/stone-still.webp', // стоп-кадр со дна, фон плеера
     descentSec: 1.2,  // длительность анимации погружения по клику «послушать»
     ascentSec: 1.2,   // держим симметрию: возврат ощущается как обратное погружение
     returnScrollThreshold: 920, // сколько upward-scroll нужно накопить для выхода из плеера
