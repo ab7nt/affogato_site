@@ -10,35 +10,16 @@ Affogato.Preloader = (function () {
     return cfg.dir + '/' + cfg.prefix + n + cfg.ext;
   }
 
-  function loadOne(src) {
-    return new Promise(function (resolve) {
-      var img = new Image();
-      img.onload = function () {
-        // decode() готовит битмап заранее — иначе Safari может
-        // декодировать кадр прямо во время скролла и дать фликер.
-        if (img.decode) {
-          img.decode().then(
-            function () { resolve(img); },
-            function () { resolve(img); }
-          );
-        } else {
-          resolve(img);
-        }
-      };
-      // Битый кадр не должен ронять всю загрузку.
-      img.onerror = function () { resolve(img); };
-      img.src = src;
-    });
-  }
-
   // Возвращает Promise с массивом Image в порядке кадров.
+  // Загрузка одного кадра — общий Affogato.Utils.loadImage (Image + decode(),
+  // битый кадр не роняет всю загрузку).
   function loadAll(onProgress) {
     var total = cfg.count;
     var done = 0;
     var tasks = [];
     for (var i = 0; i < total; i++) {
       tasks.push(
-        loadOne(framePath(cfg.start + i)).then(function (img) {
+        Affogato.Utils.loadImage(framePath(cfg.start + i)).then(function (img) {
           done++;
           if (onProgress) onProgress(done / total);
           return img;

@@ -51,7 +51,7 @@ Affogato.Player = (function () {
 
   function preloadStone() {
     stoneImage = new Image();
-    stoneImage.src = playerCfg().stillSrc || 'assets/stone-still.png';
+    stoneImage.src = playerCfg().stillSrc || 'assets/stone-still.webp';
   }
 
   function createDom() {
@@ -196,9 +196,7 @@ Affogato.Player = (function () {
 
   // ─────────────────────────────────────────── volume ──
 
-  function clamp01(v) {
-    return v < 0 ? 0 : (v > 1 ? 1 : v);
-  }
+  var clamp01 = Affogato.Utils.clamp01;
 
   function safeStorage(fn) {
     try { return fn(); } catch (e) { return null; }
@@ -412,9 +410,7 @@ Affogato.Player = (function () {
     returnPreviewTimer = window.setTimeout(settleReturnPreview, 180);
   }
 
-  function easeOutCubic(t) {
-    return 1 - Math.pow(1 - t, 3);
-  }
+  var easeOutCubic = Affogato.Utils.easeOutCubic;
 
   function settleReturnPreview() {
     returnPreviewTimer = null;

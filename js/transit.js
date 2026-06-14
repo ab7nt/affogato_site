@@ -26,17 +26,9 @@ Affogato.Transit = (function () {
   var DIVE_END_DOWN = 1 - WATER_END;  // 0.46
   var WATER_END_DOWN = 1 - STONE_END; // 0.64
 
-  function clamp01(v) {
-    return v < 0 ? 0 : (v > 1 ? 1 : v);
-  }
-
-  function easeInOutCubic(t) {
-    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-  }
-
-  function easeOutCubic(t) {
-    return 1 - Math.pow(1 - t, 3);
-  }
+  var clamp01 = Affogato.Utils.clamp01;
+  var easeInOutCubic = Affogato.Utils.easeInOutCubic;
+  var easeOutCubic = Affogato.Utils.easeOutCubic;
 
   function localProgress(progress, from, to) {
     return clamp01((progress - from) / (to - from));

@@ -8,9 +8,7 @@ Affogato.Scenes.createStoneVideo = function (cfg) {
   var shownAt = null;
   var isPlaying = false;
 
-  function clamp01(v) {
-    return v < 0 ? 0 : (v > 1 ? 1 : v);
-  }
+  var clamp01 = Affogato.Utils.clamp01;
 
   function transitionOpacity(offsetFrac) {
     if (offsetFrac < 0) return clamp01(1 + offsetFrac);

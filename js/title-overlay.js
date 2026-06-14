@@ -23,20 +23,12 @@ Affogato.TitleOverlay = (function () {
     document.documentElement.style.setProperty('--title-size-scale', cfg.sizeScale || 1);
   }
 
-  function clamp01(v) {
-    return v < 0 ? 0 : (v > 1 ? 1 : v);
-  }
+  var clamp01 = Affogato.Utils.clamp01;
+  var easeOutCubic = Affogato.Utils.easeOutCubic;
+  var easeInOutCubic = Affogato.Utils.easeInOutCubic;
 
   function lerp(a, b, t) {
     return a + (b - a) * t;
-  }
-
-  function easeOutCubic(t) {
-    return 1 - Math.pow(1 - t, 3);
-  }
-
-  function easeInOutCubic(t) {
-    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
   }
 
   function isMobile() {

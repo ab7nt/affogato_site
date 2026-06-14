@@ -19,9 +19,7 @@ Affogato.UnderwaterBg = (function () {
     return min + Math.random() * (max - min);
   }
 
-  function clamp01(v) {
-    return v < 0 ? 0 : (v > 1 ? 1 : v);
-  }
+  var clamp01 = Affogato.Utils.clamp01;
 
   function wrap01(v) {
     v = v % 1;
