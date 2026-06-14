@@ -9,6 +9,7 @@ Affogato.Sky = (function () {
   var triggerEl, returnEl, shellEl, panelEl, contentEl, canvasEl, loadingEl, ctx;
   var formEl, emailEl, messageEl, submitBtn, successEl, errorEl, titleEl;
   var sending = false;
+  var sendController = null; // AbortController текущей отправки — прерываем при закрытии
   // Заголовки модальной панели: дефолтный («написать») и пост-сабмит
   // («отправлено»). Хардкод текста здесь и в [index.html] синхронен —
   // если меняешь, меняй в обоих местах.
@@ -50,13 +51,8 @@ Affogato.Sky = (function () {
     return Affogato.Config.scenes.sky;
   }
 
-  function clamp01(v) {
-    return v < 0 ? 0 : (v > 1 ? 1 : v);
-  }
-
-  function easeInOutCubic(t) {
-    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-  }
+  var clamp01 = Affogato.Utils.clamp01;
+  var easeInOutCubic = Affogato.Utils.easeInOutCubic;
 
   // ───────────────────────────────────────── canvas ──
 
@@ -151,33 +147,24 @@ Affogato.Sky = (function () {
     return f.dir + '/' + f.prefix + num + f.ext;
   }
 
-  function loadOne(src) {
-    return new Promise(function (resolve) {
-      var img = new Image();
-      img.onload = function () {
-        if (img.decode) {
-          img.decode().then(function () { resolve(img); }, function () { resolve(img); });
-        } else {
-          resolve(img);
-        }
-      };
-      img.onerror = function () { resolve(img); };
-      img.src = src;
-    });
-  }
-
   function loadFrames() {
     if (frames) return Promise.resolve(frames);
     if (loading) return loading;
     var f = cfg().frames;
     var tasks = [];
-    for (var i = 0; i < f.count; i++) tasks.push(loadOne(framePath(f.start + i)));
+    for (var i = 0; i < f.count; i++) tasks.push(Affogato.Utils.loadImage(framePath(f.start + i)));
     loading = Promise.all(tasks).then(function (imgs) {
       frames = imgs;
       loading = false;
       return frames;
     });
     return loading;
+  }
+
+  // Фоновый прогрев: грузим кадры заранее (идемпотентно), чтобы первый open()
+  // не ждал сети. Возвращаем промис — вызывающий может выстроить приоритет.
+  function prefetch() {
+    return loadFrames();
   }
 
   // ─────────────────────────────────────── UI ──
@@ -399,10 +386,12 @@ Affogato.Sky = (function () {
     var email = ((emailEl && emailEl.value) || '').trim();
     if (email) fd.set('_replyto', email);
 
+    sendController = new AbortController();
     fetch(FORMSUBMIT_ENDPOINT, {
       method: 'POST',
       headers: { 'Accept': 'application/json' },
       body: fd,
+      signal: sendController.signal,
     }).then(function (res) {
       return res.json().catch(function () { return null; });
     }).then(function (data) {
@@ -411,9 +400,12 @@ Affogato.Sky = (function () {
       } else {
         showError((data && data.message) || 'не получилось отправить, попробуй ещё раз');
       }
-    }).catch(function () {
+    }).catch(function (err) {
+      // Закрытие модалки прерывает запрос — это не ошибка связи, молчим.
+      if (err && err.name === 'AbortError') return;
       showError('нет связи — проверь интернет и попробуй ещё раз');
     }).then(function () {
+      sendController = null;
       sending = false;
       if (submitBtn) {
         submitBtn.disabled = false;
@@ -441,6 +433,7 @@ Affogato.Sky = (function () {
   }
 
   function resetForm() {
+    if (sendController) { sendController.abort(); sendController = null; }
     if (formEl) formEl.reset();
     if (contentEl) contentEl.classList.remove('is-sent');
     if (successEl) successEl.hidden = true;
@@ -502,5 +495,5 @@ Affogato.Sky = (function () {
     return mode !== 'closed';
   }
 
-  return { init: init, isActive: isActive };
+  return { init: init, isActive: isActive, prefetch: prefetch };
 })();

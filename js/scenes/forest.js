@@ -40,13 +40,8 @@ Affogato.Forest = (function () {
     return Affogato.Config.scenes.forest;
   }
 
-  function clamp01(v) {
-    return v < 0 ? 0 : (v > 1 ? 1 : v);
-  }
-
-  function easeInOutCubic(t) {
-    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-  }
+  var clamp01 = Affogato.Utils.clamp01;
+  var easeInOutCubic = Affogato.Utils.easeInOutCubic;
 
   // ───────────────────────────────────────── canvas ──
 
@@ -155,33 +150,24 @@ Affogato.Forest = (function () {
     return f.dir + '/' + f.prefix + num + f.ext;
   }
 
-  function loadOne(src) {
-    return new Promise(function (resolve) {
-      var img = new Image();
-      img.onload = function () {
-        if (img.decode) {
-          img.decode().then(function () { resolve(img); }, function () { resolve(img); });
-        } else {
-          resolve(img);
-        }
-      };
-      img.onerror = function () { resolve(img); };
-      img.src = src;
-    });
-  }
-
   function loadFrames() {
     if (frames) return Promise.resolve(frames);
     if (loading) return loading;
     var f = cfg().frames;
     var tasks = [];
-    for (var i = 0; i < f.count; i++) tasks.push(loadOne(framePath(f.start + i)));
+    for (var i = 0; i < f.count; i++) tasks.push(Affogato.Utils.loadImage(framePath(f.start + i)));
     loading = Promise.all(tasks).then(function (imgs) {
       frames = imgs;
       loading = false;
       return frames;
     });
     return loading;
+  }
+
+  // Фоновый прогрев: грузим кадры заранее (идемпотентно), чтобы первый open()
+  // не ждал сети. Возвращаем промис — вызывающий может выстроить приоритет.
+  function prefetch() {
+    return loadFrames();
   }
 
   // ─────────────────────────────────────── UI ──
@@ -426,5 +412,5 @@ Affogato.Forest = (function () {
     return mode !== 'closed';
   }
 
-  return { init: init, isActive: isActive };
+  return { init: init, isActive: isActive, prefetch: prefetch };
 })();

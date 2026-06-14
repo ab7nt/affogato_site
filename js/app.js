@@ -301,6 +301,29 @@
       requestAnimationFrame(loop);
     }
     requestAnimationFrame(loop);
+
+    // Фоновый прогрев модальных сцен: их кадры (forest 79, sky 81) грузятся
+    // лениво при первом клике и дают заметную паузу. Догружаем заранее в
+    // простое время после старта — forest в приоритете (его чаще открывают
+    // первым), sky следом, чтобы не конкурировать за сеть/декодирование.
+    scheduleIdle(function () {
+      var forest = Affogato.Forest;
+      var sky = Affogato.Sky;
+      var afterForest = (forest && forest.prefetch) ? forest.prefetch() : Promise.resolve();
+      Promise.resolve(afterForest).then(function () {
+        if (sky && sky.prefetch) sky.prefetch();
+      });
+    });
+  }
+
+  // Отложить работу на простое время: requestIdleCallback, иначе таймер-фолбэк
+  // (Safari < 17 без rIC). timeout гарантирует запуск, даже если простоя нет.
+  function scheduleIdle(fn) {
+    if (typeof window.requestIdleCallback === 'function') {
+      window.requestIdleCallback(fn, { timeout: 2500 });
+    } else {
+      window.setTimeout(fn, 1200);
+    }
   }
 
   Affogato.Preloader.loadAll(onProgress).then(start);
