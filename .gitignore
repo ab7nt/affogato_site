@@ -1,1 +1,13 @@
 AGENT.md
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Служебные/системные
+Thumbs.db
+*.log
+
+# Парковочные страницы хостинга (reg.ru)
+/assets/index.html
+/js/index.html
