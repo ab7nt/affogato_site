@@ -1149,11 +1149,14 @@ body.is-returning-to-start .return-hint--polaroid {
 }
 
 /* Шапка-логотип — по центру; параграфы выключены по формату (см. ниже). */
-.forest-news__item--masthead { text-align: center; }
+.forest-news__item--masthead,
+.sky-news__item--masthead { text-align: center; }
 
-/* Газетная рубрика-секция над заметкой: Playfair Display капителью с разрядкой
-   и ДВОЙНОЙ линейкой снизу (border-style: double) — как заголовок колонки. */
-.forest-news__kicker {
+/* Газетная рубрика-секция над заметкой/полем: Playfair Display капителью с
+   разрядкой и ДВОЙНОЙ линейкой снизу — как заголовок колонки. Общая для
+   обрывков леса и подписей-полей формы «написать». */
+.forest-news__kicker,
+.sky-news__kicker {
   display: block;
   margin-bottom: 0.55em;
   padding-bottom: 0.4em;
@@ -1167,9 +1170,11 @@ body.is-returning-to-start .return-hint--polaroid {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
 }
 
-/* Титул «АФФОГАТО» — фирменный Poiret One (вес 400 — единственное начертание),
-   по бокам ДВОЙНЫЕ линейки-правила (nameplate). flex держит линейки симметрично. */
-.forest-news__masthead {
+/* Титул «АФФОГАТО»/«написать» — фирменный Poiret One (вес 400 — единственное
+   начертание), по бокам ДВОЙНЫЕ линейки-правила (nameplate). flex держит
+   линейки симметрично. Общий стиль для шапки леса и заголовка формы. */
+.forest-news__masthead,
+.sky-news__masthead {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1184,7 +1189,9 @@ body.is-returning-to-start .return-hint--polaroid {
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.72), 0 4px 22px rgba(0, 0, 0, 0.5);
 }
 .forest-news__masthead::before,
-.forest-news__masthead::after {
+.forest-news__masthead::after,
+.sky-news__masthead::before,
+.sky-news__masthead::after {
   content: "";
   flex: 1 1 auto;
   max-width: clamp(1.6rem, 5.5vw, 3.6rem);
@@ -1195,7 +1202,8 @@ body.is-returning-to-start .return-hint--polaroid {
 
 /* Подпись-дата под шапкой: Old Standard TT курсивом, двойная линейка сверху и
    сдержанный дингбат ❧ — единственный орнамент-акцент газеты. */
-.forest-news__dateline {
+.forest-news__dateline,
+.sky-news__dateline {
   display: block;
   margin-top: 0.55em;
   padding-top: 0.45em;
@@ -1206,7 +1214,8 @@ body.is-returning-to-start .return-hint--polaroid {
   letter-spacing: 0.04em;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.72);
 }
-.forest-news__dateline::after {
+.forest-news__dateline::after,
+.sky-news__dateline::after {
   content: "\2767"; /* ❧ floral heart */
   display: block;
   margin-top: 0.5em;
@@ -1339,94 +1348,99 @@ body.in-forest-mode .titles {
 
 /* Контейнер для панели с формой. Сама панель и контент управляются
    inline-opacity из sky.js синхронно с прогрессом. */
+/* Контейнер формы «написать» — центральный столбец без подложки (как обрывки
+   леса). Части (.sky-piece) проявляются и собираются по прогрессу из sky.js. */
 .sky-shell {
   position: fixed;
   left: 50%;
   top: 50%;
   z-index: 22;
-  width: clamp(280px, 33vw, 520px);
+  width: clamp(300px, 38vw, 540px);
   transform: translate(-50%, -50%);
   pointer-events: none;
-  font-family: 'Poiret One', system-ui, sans-serif;
-  text-align: center;
+  font-family: 'Old Standard TT', Georgia, 'Times New Roman', serif;
+  text-align: left;
 }
 
-/* Текст и контролы внутри панели становятся кликабельными только после того,
-   как панель полностью проявилась (класс ставится из sky.js на финальном
-   кадре descent). */
+/* Форма кликабельна только когда собрана — класс ставит sky.js при p ≳ openAt. */
 .sky-shell.is-open {
   pointer-events: auto;
-}
-
-.sky-shell__panel {
-  position: absolute;
-  inset: 0;
-  background: rgba(7, 9, 12, 0.62);
-  border: 1px solid rgba(232, 236, 229, 0.14);
-  border-radius: clamp(0.6rem, 1.4vw, 1.1rem);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  opacity: 0;
-  will-change: opacity;
 }
 
 .sky-shell__content {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: clamp(0.9rem, 2vw, 1.4rem);
-  padding: clamp(1.4rem, 3vw, 2.6rem) clamp(1.2rem, 3vw, 2.2rem);
-  opacity: 0;
-  will-change: opacity;
+  gap: clamp(1rem, 2.4vw, 1.7rem);
 }
 
-.sky-shell__title {
-  margin: 0;
-  color: rgba(235, 238, 232, 0.94);
-  font-size: clamp(1.9rem, 4.2vw, 2.8rem);
-  font-weight: 400;
-  letter-spacing: 0.04em;
-  line-height: 1;
-  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
+/* Часть формы. opacity и вертикальный сдвиг (--py) пишет sky.js каждый кадр:
+   на сборке часть поднимается снизу к нулю и проявляется, на спуске — гаснет
+   и уходит вниз. Без CSS-transition — каждый кадр ставится нужное значение. */
+.sky-piece {
+  --py: 0px;
+  opacity: 0;
+  transform: translateY(var(--py));
+  will-change: transform, opacity;
+}
+
+/* Двойные линейки-правила над и под титулом «написать» — как у «АФФОГАТО» в
+   лесу (там их давали кикер и дата; здесь, без них, — прямо на блоке шапки). */
+.sky-news__item--masthead {
+  padding: 0.45em 0;
+  border-top: 3px double rgba(235, 238, 232, 0.5);
+  border-bottom: 3px double rgba(235, 238, 232, 0.5);
+}
+
+/* Подпись-поле: кикер-метка (Playfair, общий стиль с .forest-news__kicker, но
+   без тяжёлой двойной линейки — её роль играет подчёркивание поля) + ввод. */
+.sky-field-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45em;
+}
+.sky-field-row .sky-news__kicker {
+  border-bottom: 0;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+/* Поля ввода — без тёмного бокса: тонкое подчёркивание, светлый текст серифом
+   поверх неба/леса; читаемость держит многослойная тень. */
+.sky-field {
+  width: 100%;
+  padding: 0.45em 0.15em;
+  border: 0;
+  border-bottom: 1px solid rgba(235, 238, 232, 0.42);
+  background: transparent;
+  color: rgba(237, 240, 233, 0.96);
+  font-family: 'Old Standard TT', Georgia, 'Times New Roman', serif;
+  font-size: clamp(1rem, 1.65vw, 1.2rem);
+  line-height: 1.5;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85), 0 2px 12px rgba(0, 0, 0, 0.6);
+  transition: border-color 0.25s ease;
+}
+
+.sky-field--area {
+  min-height: clamp(6rem, 16vh, 9.5rem);
+  resize: vertical;
+}
+
+.sky-field::placeholder {
+  color: rgba(232, 236, 229, 0.42);
+  font-style: italic;
+}
+
+.sky-field:focus {
+  outline: none;
+  border-bottom-color: rgba(240, 242, 236, 0.9);
 }
 
 .sky-form {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: clamp(0.8rem, 1.8vw, 1.2rem);
-}
-
-.sky-form__input,
-.sky-form__textarea {
-  width: 100%;
-  padding: clamp(0.7rem, 1.6vw, 1rem);
-  border: 1px solid rgba(232, 236, 229, 0.22);
-  border-radius: clamp(0.4rem, 1vw, 0.7rem);
-  background: rgba(7, 9, 12, 0.4);
-  color: rgba(235, 238, 232, 0.94);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: clamp(0.95rem, 1.6vw, 1.05rem);
-  line-height: 1.5;
-  transition: border-color 0.25s ease, background 0.25s ease;
-}
-
-.sky-form__textarea {
-  min-height: clamp(7rem, 18vh, 11rem);
-  resize: vertical;
-}
-
-.sky-form__input::placeholder,
-.sky-form__textarea::placeholder {
-  color: rgba(232, 236, 229, 0.36);
-}
-
-.sky-form__input:focus,
-.sky-form__textarea:focus {
-  outline: none;
-  border-color: rgba(232, 236, 229, 0.5);
-  background: rgba(7, 9, 12, 0.55);
+  gap: clamp(1rem, 2.4vw, 1.7rem);
 }
 
 /* Honeypot — спрятан от глаз и скринридеров, но в DOM присутствует;
@@ -1440,34 +1454,37 @@ body.in-forest-mode .titles {
   pointer-events: none;
 }
 
+/* Кнопка «отправить» — светлая обводка, Poiret One. Сама является .sky-piece,
+   поэтому в transform держим её сдвиг --py (+ сжатие при нажатии). */
 .sky-form__submit {
   align-self: center;
-  padding: 0.55rem 1.6rem;
-  border: 1px solid rgba(232, 236, 229, 0.32);
+  margin-top: 0.2em;
+  padding: 0.55rem 1.7rem;
+  border: 1px solid rgba(235, 238, 232, 0.4);
   border-radius: 999px;
   background: transparent;
-  color: rgba(232, 236, 229, 0.82);
+  color: rgba(238, 240, 234, 0.9);
   font-family: 'Poiret One', system-ui, sans-serif;
   font-size: clamp(1rem, 1.8vw, 1.2rem);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   line-height: 1;
   cursor: pointer;
-  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.45);
-  transition: color 0.25s ease, border-color 0.25s ease, background 0.18s ease, transform 0.15s ease;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
+  transition: color 0.25s ease, border-color 0.25s ease, background 0.18s ease;
 }
 
 .sky-form__submit:hover {
-  color: rgba(255, 255, 255, 0.96);
-  border-color: rgba(232, 236, 229, 0.6);
-  background: rgba(232, 236, 229, 0.05);
+  color: rgba(255, 255, 255, 0.98);
+  border-color: rgba(240, 242, 236, 0.72);
+  background: rgba(235, 238, 232, 0.06);
 }
 
 .sky-form__submit:active {
-  transform: scale(0.97);
+  transform: translateY(var(--py)) scale(0.97);
 }
 
 .sky-form__submit:focus-visible {
-  outline: 1px solid rgba(232, 236, 229, 0.55);
+  outline: 1px solid rgba(235, 238, 232, 0.6);
   outline-offset: 4px;
 }
 
@@ -1477,43 +1494,42 @@ body.in-forest-mode .titles {
 }
 
 .sky-form__submit:disabled:hover {
-  color: rgba(232, 236, 229, 0.82);
-  border-color: rgba(232, 236, 229, 0.32);
+  color: rgba(238, 240, 234, 0.9);
+  border-color: rgba(235, 238, 232, 0.4);
   background: transparent;
 }
 
-/* Состояние «отправлено»: форма прячется, появляется подтверждение.
-   Переключается классом is-sent на .sky-shell__content из sky.js. */
+/* Состояние «отправлено»: форма прячется, остаётся подтверждение.
+   Класс is-sent ставит sky.js на .sky-shell__content. */
 .sky-shell__content.is-sent .sky-form {
   display: none;
 }
 
-.sky-shell__content.is-sent .sky-form__success {
-  display: block;
-}
-
 .sky-form__success {
-  color: rgba(235, 238, 232, 0.94);
+  color: rgba(238, 240, 234, 0.96);
   font-family: 'Poiret One', system-ui, sans-serif;
   font-size: clamp(1.25rem, 2.4vw, 1.6rem);
   letter-spacing: 0.04em;
   line-height: 1.4;
   text-align: center;
-  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
-  padding: clamp(1rem, 2vw, 1.6rem) 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7), 0 3px 18px rgba(0, 0, 0, 0.5);
+  padding: clamp(0.6rem, 1.6vw, 1.2rem) 0;
 }
 
 .sky-form__error {
-  margin-top: clamp(0.4rem, 1vw, 0.7rem);
-  padding: clamp(0.45rem, 1vw, 0.6rem) clamp(0.7rem, 1.4vw, 0.95rem);
-  border: 1px solid rgba(220, 120, 100, 0.4);
-  border-radius: clamp(0.35rem, 0.9vw, 0.6rem);
-  background: rgba(70, 30, 28, 0.18);
-  color: rgba(232, 200, 196, 0.92);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: clamp(0.85rem, 1.4vw, 0.95rem);
+  margin-top: clamp(0.3rem, 0.8vw, 0.6rem);
+  color: rgba(236, 206, 200, 0.96);
+  font-family: 'Old Standard TT', Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: clamp(0.92rem, 1.5vw, 1.06rem);
   line-height: 1.45;
   text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8), 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+
+/* Мобильный портрет: уже столбец формы. */
+@media (max-width: 760px) {
+  .sky-shell { width: min(86vw, 380px); }
 }
 
 .sky-loading {

@@ -6,8 +6,9 @@
 window.Affogato = window.Affogato || {};
 
 Affogato.Sky = (function () {
-  var triggerEl, returnEl, shellEl, panelEl, contentEl, canvasEl, loadingEl, ctx;
+  var triggerEl, returnEl, shellEl, contentEl, canvasEl, loadingEl, ctx;
   var formEl, emailEl, messageEl, submitBtn, successEl, errorEl, titleEl;
+  var pieces = []; // части формы (.sky-piece) с data-band — собираются по прогрессу
   var sending = false;
   var sendController = null; // AbortController текущей отправки — прерываем при закрытии
   // Заголовки модальной панели: дефолтный («написать») и пост-сабмит
@@ -41,7 +42,6 @@ Affogato.Sky = (function () {
   var snapshotCtx = null;
 
   var SCRUB_PX_PER_PROGRESS = 1100;
-  var PANEL_FADE_START = 0.78;
 
   // На какой доле прогресса снимок главной сцены полностью «растворяется».
   // До этой точки sky-кадр виден всё больше, снимок — всё меньше.
@@ -108,35 +108,64 @@ Affogato.Sky = (function () {
     }
   }
 
+  function isMobile() {
+    return !!(window.matchMedia && window.matchMedia('(max-width: 760px)').matches);
+  }
+
+  function piecesCfg() {
+    return cfg().pieces || {};
+  }
+
+  // Сборка/разборка формы по частям. У каждой .sky-piece окно появления
+  // [band … 1]: полностью собрана только в самой верхней точке (p=1). Поэтому
+  // на спуске КАЖДАЯ часть начинает таять сразу, как только p<1 (части с
+  // большим band гаснут быстрее — ступенчатая разборка снизу вверх); на пути
+  // наверх — собираются в обратном порядке. --py поднимает часть снизу на
+  // место (op→1) и уводит вниз при затухании (op→0). Форма кликабельна лишь
+  // когда собрана (progress ≥ openAt и mode==='open').
+  function updatePieces() {
+    var n = piecesCfg();
+    var driftPx = n.driftPx != null ? n.driftPx : 46;
+    var dScale = (isMobile() && n.mobileScale != null) ? n.mobileScale : 1;
+    for (var i = 0; i < pieces.length; i++) {
+      var it = pieces[i];
+      var denom = 1 - it.band;
+      var t = denom > 0 ? clamp01((progress - it.band) / denom) : (progress >= it.band ? 1 : 0);
+      var op = t * t * (3 - 2 * t); // smoothstep
+      var el = it.el;
+      el.style.opacity = op.toFixed(3);
+      el.style.setProperty('--py', ((1 - op) * driftPx * dScale).toFixed(1) + 'px');
+    }
+    var openAt = n.openAt != null ? n.openAt : 0.985;
+    if (shellEl) shellEl.classList.toggle('is-open', mode === 'open' && progress >= openAt);
+  }
+
   function renderProgress(p) {
-    if (!frames || !frames.length) return;
-    var c = cfg();
-    var s = c.startSpeed != null ? c.startSpeed : 0.4;
-    var eased = s * p + (1 - s) * p * p;
-    var idx = Math.round(eased * (frames.length - 1));
-    if (idx < 0) idx = 0;
-    if (idx > frames.length - 1) idx = frames.length - 1;
+    if (frames && frames.length) {
+      var c = cfg();
+      var s = c.startSpeed != null ? c.startSpeed : 0.4;
+      var eased = s * p + (1 - s) * p * p;
+      var idx = Math.round(eased * (frames.length - 1));
+      if (idx < 0) idx = 0;
+      if (idx > frames.length - 1) idx = frames.length - 1;
 
-    drawFrame(frames[idx]);
+      drawFrame(frames[idx]);
 
-    // Бесшовный стык: при p≈0 поверх sky-кадра рисуется снимок #stage с
-    // альфой ≈ 1 — sky-overlay показывает ровно то же, что и main под ним,
-    // разрыв перспективы не виден. По мере роста progress снимок гаснет, и
-    // выходим в чистые sky-кадры; на закрытии — симметрично, снимок снова
-    // проявляется к p=0.
-    if (snapshotCanvas) {
-      var snapshotAlpha = clamp01(1 - p / SNAPSHOT_FADE_END);
-      if (snapshotAlpha > 0) {
-        ctx.save();
-        ctx.globalAlpha = snapshotAlpha;
-        ctx.drawImage(snapshotCanvas, 0, 0, canvasEl.width, canvasEl.height);
-        ctx.restore();
+      // Бесшовный стык: при p≈0 поверх sky-кадра рисуется снимок #stage с
+      // альфой ≈ 1 — sky-overlay показывает ровно то же, что и main под ним.
+      // По мере роста progress снимок гаснет; на закрытии — симметрично.
+      if (snapshotCanvas) {
+        var snapshotAlpha = clamp01(1 - p / SNAPSHOT_FADE_END);
+        if (snapshotAlpha > 0) {
+          ctx.save();
+          ctx.globalAlpha = snapshotAlpha;
+          ctx.drawImage(snapshotCanvas, 0, 0, canvasEl.width, canvasEl.height);
+          ctx.restore();
+        }
       }
     }
 
-    var overlayOpacity = clamp01((p - PANEL_FADE_START) / (1 - PANEL_FADE_START)).toFixed(3);
-    if (panelEl) panelEl.style.opacity = overlayOpacity;
-    if (contentEl) contentEl.style.opacity = overlayOpacity;
+    updatePieces();
   }
 
   // ─────────────────────────────────── loading ──
@@ -244,8 +273,8 @@ Affogato.Sky = (function () {
       startAnim(0, 1, cfg().descentSec || 1.2, function () {
         mode = 'open';
         progress = 1;
+        // renderProgress(1) → updatePieces соберёт форму и поставит is-open.
         renderProgress(1);
-        shellEl.classList.add('is-open');
         document.body.classList.add('sky-content-open');
         returnScrollDebt = 0;
         lastReturnScrollAt = 0;
@@ -293,11 +322,7 @@ Affogato.Sky = (function () {
   function applyScrub(amount) {
     var delta = amount / SCRUB_PX_PER_PROGRESS;
     progress = clamp01(progress + delta);
-    renderProgress(progress);
-    if (mode === 'open' && shellEl) {
-      if (progress >= 1) shellEl.classList.add('is-open');
-      else shellEl.classList.remove('is-open');
-    }
+    renderProgress(progress); // updatePieces сам обновит is-open по openAt
   }
 
   function collectReturnScroll(amount) {
@@ -448,6 +473,18 @@ Affogato.Sky = (function () {
 
   // ────────────────────────────── init ──
 
+  function collectPieces() {
+    pieces = [];
+    if (!shellEl) return;
+    var nodes = shellEl.querySelectorAll('.sky-piece');
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      var band = parseFloat(el.getAttribute('data-band'));
+      if (isNaN(band)) band = 0.5;
+      pieces.push({ el: el, band: band });
+    }
+  }
+
   function bindEvents() {
     triggerEl.addEventListener('click', function (e) {
       e.preventDefault();
@@ -468,7 +505,6 @@ Affogato.Sky = (function () {
     triggerEl = document.getElementById('sky-trigger');
     returnEl = document.getElementById('sky-return');
     shellEl = document.getElementById('sky-shell');
-    panelEl = shellEl ? shellEl.querySelector('.sky-shell__panel') : null;
     contentEl = shellEl ? shellEl.querySelector('.sky-shell__content') : null;
     canvasEl = document.getElementById('sky-overlay');
     loadingEl = document.getElementById('sky-loading');
@@ -480,6 +516,8 @@ Affogato.Sky = (function () {
     errorEl = document.getElementById('sky-form-error');
     titleEl = shellEl ? shellEl.querySelector('.sky-shell__title') : null;
     if (!triggerEl || !canvasEl) return;
+
+    collectPieces();
 
     ctx = canvasEl.getContext('2d');
     applyCanvasSize();

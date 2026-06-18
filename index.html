@@ -110,27 +110,38 @@
   <div id="forest-loading" class="forest-loading" aria-hidden="true">загрузка</div>
 
   <canvas id="sky-overlay" class="sky-overlay" aria-hidden="true"></canvas>
-  <div id="sky-shell" class="sky-shell">
-    <div class="sky-shell__panel" aria-hidden="true"></div>
+  <!-- «Написать» в стилистике леса: форма собирается по частям на пути наверх и
+       разбирается с фейдом на спуске. Каждая часть — .sky-piece с data-band
+       (порог по прогрессу); opacity и вертикальный сдвиг пишет sky.js
+       (updatePieces). Подложки нет — светлый текст прямо по небу/лесу. -->
+  <div id="sky-shell" class="sky-shell" aria-label="Написать">
     <div class="sky-shell__content">
-      <h2 class="sky-shell__title">написать</h2>
+      <div class="sky-news__item sky-news__item--masthead sky-piece" data-band="0.42">
+        <h2 class="sky-shell__title sky-news__masthead">написать</h2>
+      </div>
       <form id="sky-form" class="sky-form" novalidate>
-        <input
-          id="sky-form-email"
-          class="sky-form__input"
-          type="email"
-          name="email"
-          placeholder="ваш email (для ответа, если понадобится)"
-          autocomplete="email"
-        >
-        <textarea
-          id="sky-form-message"
-          class="sky-form__textarea"
-          name="message"
-          rows="6"
-          placeholder="ваше сообщение"
-          required
-        ></textarea>
+        <div class="sky-news__item sky-piece sky-field-row" data-band="0.60">
+          <span class="sky-news__kicker">почта для ответа</span>
+          <input
+            id="sky-form-email"
+            class="sky-field"
+            type="email"
+            name="email"
+            placeholder="можно оставить, если ждёшь ответ"
+            autocomplete="email"
+          >
+        </div>
+        <div class="sky-news__item sky-piece sky-field-row" data-band="0.76">
+          <span class="sky-news__kicker">сообщение</span>
+          <textarea
+            id="sky-form-message"
+            class="sky-field sky-field--area"
+            name="message"
+            rows="6"
+            placeholder="ваше сообщение"
+            required
+          ></textarea>
+        </div>
 
         <input type="hidden" name="_subject" value="Письмо с сайта Аффогато">
         <input type="hidden" name="_captcha" value="false">
@@ -144,12 +155,12 @@
           aria-hidden="true"
         >
 
-        <button type="submit" class="sky-form__submit">отправить</button>
+        <button type="submit" class="sky-form__submit sky-piece" data-band="0.90">отправить</button>
       </form>
-      <div id="sky-form-success" class="sky-form__success" aria-live="polite" hidden>
+      <div id="sky-form-success" class="sky-form__success sky-piece" data-band="0.90" aria-live="polite" hidden>
         спасибо, твоё письмо в пути
       </div>
-      <div id="sky-form-error" class="sky-form__error" aria-live="polite" hidden></div>
+      <div id="sky-form-error" class="sky-form__error sky-piece" data-band="0.90" aria-live="polite" hidden></div>
     </div>
   </div>
   <button id="sky-return" class="return-hint return-hint--sky" type="button" aria-label="Вернуться">
