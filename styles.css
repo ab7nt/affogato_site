@@ -26,6 +26,52 @@
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
+/* Винтажно-газетная пара для «обрывков о проекте» (сцена forest), захостена
+   локально по тому же принципу, что Poiret One (без CDN, сабсеты unicode-range).
+   Playfair Display 800 — высококонтрастные рубрики-кикеры (только кириллица);
+   Old Standard TT — викторианское засечное тело + курсивная дата.
+   Сам титул «АФФОГАТО» — на Poiret One (см. .forest-news__masthead). */
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('assets/fonts/playfair-display-800-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Old Standard TT';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('assets/fonts/old-standard-tt-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Old Standard TT';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('assets/fonts/old-standard-tt-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Old Standard TT';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('assets/fonts/old-standard-tt-italic-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Old Standard TT';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('assets/fonts/old-standard-tt-italic-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -1070,69 +1116,127 @@ body.is-returning-to-start .return-hint--polaroid {
   opacity: 1;
 }
 
-/* Контент-обёртка «о проекте» поверх canvas: центральная треть экрана.
-   Подложка раскрывается вертикально из центра (scaleY), затем с лёгкой
-   задержкой проявляется текст. Управляется классом .is-open на самом
-   контейнере (ставится и снимается в forest.js синхронно с прогрессом). */
-.forest-shell {
+/* «О проекте» поверх canvas: полноэкранный слой, внутри — обрывки в ОДНОМ
+   центральном столбце. Подложки нет (светлый текст отделяется от светлого
+   фона тенью). Обрывки показываются по мере прохождения пути скроллом: каждый
+   привязан к своей полосе прогресса (data-band), всплывает в центр, а
+   пройденные уводятся вверх и в прозрачность. Вертикальный сдвиг (--py) и
+   opacity пишет forest.js (updateFragments) как функцию от progress — без
+   CSS-transition, каждый кадр сам ставит нужное значение. */
+.forest-news {
   position: fixed;
+  inset: 0;
+  z-index: 22;
+  pointer-events: none;
+  /* Винтажно-газетная пара: тело/дата — викторианский сериф Old Standard TT
+     (наследуется отсюда), рубрики-кикеры — Playfair Display 800, а титул
+     «АФФОГАТО» — Poiret One (оба задаются отдельно ниже). */
+  font-family: 'Old Standard TT', Georgia, 'Times New Roman', serif;
+}
+
+/* Один обрывок-«заметка». Все они в одной точке — центр экрана; различает их
+   только полоса прогресса. --py — вертикальный дрейф (px): ниже центра, пока
+   блок «впереди» по пути; выше центра, когда уже пройден. */
+.forest-news__item {
+  --py: 0px;
+  position: absolute;
   left: 50%;
   top: 50%;
-  z-index: 22;
-  width: clamp(280px, 33vw, 520px);
-  transform: translate(-50%, -50%);
-  pointer-events: none;
+  width: clamp(300px, 40vw, 540px);
+  opacity: 0;
+  transform: translate(-50%, calc(-50% + var(--py)));
+  will-change: transform, opacity;
+}
+
+/* Шапка-логотип — по центру; параграфы выключены по формату (см. ниже). */
+.forest-news__item--masthead { text-align: center; }
+
+/* Газетная рубрика-секция над заметкой: Playfair Display капителью с разрядкой
+   и ДВОЙНОЙ линейкой снизу (border-style: double) — как заголовок колонки. */
+.forest-news__kicker {
+  display: block;
+  margin-bottom: 0.55em;
+  padding-bottom: 0.4em;
+  border-bottom: 3px double rgba(235, 238, 232, 0.5);
+  color: rgba(236, 239, 233, 0.9);
+  font-family: 'Playfair Display', 'Old Standard TT', Georgia, serif;
+  font-weight: 800;
+  font-size: clamp(0.66rem, 1.2vw, 0.8rem);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+}
+
+/* Титул «АФФОГАТО» — фирменный Poiret One (вес 400 — единственное начертание),
+   по бокам ДВОЙНЫЕ линейки-правила (nameplate). flex держит линейки симметрично. */
+.forest-news__masthead {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.5rem, 1.6vw, 1.1rem);
+  margin: 0;
+  color: rgba(240, 242, 236, 0.97);
   font-family: 'Poiret One', system-ui, sans-serif;
-  text-align: center;
-}
-
-/* Полупрозрачная тёмная подложка под текст. Opacity подложки полностью
-   управляется из forest.js как функция от прогресса — она начинает
-   проявляться уже на последних кадрах descent и так же гаснет при
-   скраббинге назад. CSS-transition нет: каждый rAF-кадр сам перерисовывает
-   нужное значение, и transition только мешал бы. */
-.forest-shell__panel {
-  position: absolute;
-  inset: 0;
-  background: rgba(7, 9, 12, 0.62);
-  border: 1px solid rgba(232, 236, 229, 0.14);
-  border-radius: clamp(0.6rem, 1.4vw, 1.1rem);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  opacity: 0;
-  will-change: opacity;
-}
-
-/* Текст внутри подложки. Opacity ставится из forest.js синхронно с
-   подложкой (как функция от прогресса), без CSS-transition. */
-.forest-shell__content {
-  position: relative;
-  padding: clamp(1.4rem, 3vw, 2.6rem) clamp(1.2rem, 3vw, 2.2rem);
-  opacity: 0;
-  will-change: opacity;
-}
-
-.forest-shell__title {
-  margin: 0 0 clamp(0.7rem, 1.6vw, 1.1rem);
-  color: rgba(235, 238, 232, 0.94);
-  font-size: clamp(1.9rem, 4.2vw, 2.8rem);
   font-weight: 400;
-  letter-spacing: 0.04em;
+  font-size: clamp(2.3rem, 6vw, 4rem);
+  letter-spacing: 0.14em;
   line-height: 1;
-  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.72), 0 4px 22px rgba(0, 0, 0, 0.5);
+}
+.forest-news__masthead::before,
+.forest-news__masthead::after {
+  content: "";
+  flex: 1 1 auto;
+  max-width: clamp(1.6rem, 5.5vw, 3.6rem);
+  height: 4px;
+  border-top: 1px solid rgba(235, 238, 232, 0.62);
+  border-bottom: 1px solid rgba(235, 238, 232, 0.62);
 }
 
-.forest-shell__text {
-  margin: 0 0 clamp(0.5rem, 1.2vw, 0.85rem);
-  color: rgba(228, 232, 226, 0.82);
-  font-size: clamp(0.95rem, 1.7vw, 1.1rem);
-  line-height: 1.55;
-  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.45);
+/* Подпись-дата под шапкой: Old Standard TT курсивом, двойная линейка сверху и
+   сдержанный дингбат ❧ — единственный орнамент-акцент газеты. */
+.forest-news__dateline {
+  display: block;
+  margin-top: 0.55em;
+  padding-top: 0.45em;
+  border-top: 3px double rgba(235, 238, 232, 0.42);
+  color: rgba(230, 234, 227, 0.8);
+  font-style: italic;
+  font-size: clamp(0.76rem, 1.35vw, 0.95rem);
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.72);
+}
+.forest-news__dateline::after {
+  content: "\2767"; /* ❧ floral heart */
+  display: block;
+  margin-top: 0.5em;
+  color: rgba(232, 236, 229, 0.7);
+  font-size: 1.15em;
+  line-height: 1;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
 }
 
-.forest-shell__text:last-child {
-  margin-bottom: 0;
+/* Тело заметки: викторианский сериф Old Standard TT, выключка по формату с
+   переносами — газетная колонка. Светлый текст без подложки; тонкий сериф
+   поверх фото требует чуть усиленной тени-обводки для читаемости. */
+.forest-news__text {
+  margin: 0;
+  color: rgba(236, 239, 232, 0.94);
+  font-family: 'Old Standard TT', Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.02rem, 1.7vw, 1.24rem);
+  line-height: 1.45;
+  text-indent: 1.5em; /* абзацный отступ («красная строка») вместо буквицы */
+  text-align: justify;
+  text-align-last: left;
+  hyphens: auto;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85), 0 2px 14px rgba(0, 0, 0, 0.6);
+}
+
+/* Мобильный портрет: уже столбец, мельче кегль. Вертикальный дрейф гасит
+   forest.js (news.mobileScale в config). */
+@media (max-width: 760px) {
+  .forest-news__item { width: min(86vw, 360px); }
+  .forest-news__text { font-size: clamp(0.98rem, 3.9vw, 1.14rem); }
 }
 
 /* Индикатор загрузки кадров перед первым показом сцены. */
@@ -1158,8 +1262,8 @@ body.is-returning-to-start .return-hint--polaroid {
 
 /* Кнопка «обратно» — визуально как «погрузиться»: снизу, со стрелкой вниз,
    порядок label → sub → arrow. Видна только в режиме forest. Свой быстрый
-   transition (0.35s), чтобы при клике уходила почти сразу — синхронно с
-   .forest-shell.is-open, а не висела до конца обратной анимации кадров. */
+   transition (0.35s), чтобы при клике уходила почти сразу — синхронно со
+   снятием body.forest-content-open, а не висела до конца обратной анимации. */
 .return-hint--forest {
   top: auto;
   bottom: clamp(1.2rem, 4vw, 2.4rem);

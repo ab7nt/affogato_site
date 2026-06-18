@@ -1,13 +1,15 @@
 // Модальная сцена «о проекте»: кликом «что это?» в верхней навигации
-// запускается авто-проигрывание 81 кадра из into-the-forest_frames, на
-// финальном кадре проявляется заглушка-текст. Выход — кнопка «обратно»
-// (авто-проигрывание кадров в обратную сторону) или scroll-up с накоплением
-// порога (как в плеере). В режиме «open» wheel/touch скраббит прогресс
-// кадра в обе стороны, как в diving по скроллу.
+// запускается авто-проигрывание 79 кадров из into-the-forest_frames. Текст
+// «о проекте» подан ОДНИМ ЦЕНТРАЛЬНЫМ СТОЛБЦОМ обрывков: каждый привязан к
+// своей полосе прогресса (data-band) и показывается по мере прохождения пути.
+// Обрывок всплывает в центр на своей полосе, а пройденные уводятся вверх и в
+// прозрачность. На быстром авто-пролёте блоки лишь мелькают (не прочитать);
+// читаются на медленном РУЧНОМ скролле, когда ты сам задаёшь темп. Выход —
+// кнопка «обратно» или накопление порога scroll-up (как в плеере).
 window.Affogato = window.Affogato || {};
 
 Affogato.Forest = (function () {
-  var triggerEl, returnEl, shellEl, panelEl, contentEl, canvasEl, loadingEl, ctx;
+  var triggerEl, returnEl, shellEl, canvasEl, loadingEl, ctx;
   var frames = null;
   var loading = false;
   var mode = 'closed'; // 'closed' | 'loading' | 'descending' | 'open' | 'ascending'
@@ -18,13 +20,13 @@ Affogato.Forest = (function () {
   var lastReturnScrollAt = 0;
   var touchLastY = 0;
 
+  // Обрывки текста: заполняется в init() из .forest-news__item.
+  // { el, band, bandw }
+  var items = [];
+
   // Чувствительность скраббинга: сколько px wheel/touch соответствует
   // полному перебору прогресса 0→1. Большее значение — медленнее реакция.
   var SCRUB_PX_PER_PROGRESS = 1100;
-
-  // С какого прогресса подложка начинает проявляться. Полная видимость на
-  // progress=1; всё, что раньше — линейно от 0 к 1.
-  var PANEL_FADE_START = 0.78;
 
   // Offscreen-снимок #stage в момент клика «что это?». Накладывается поверх
   // forest-кадра с убывающей альфой на старте descent и нарастающей — на
@@ -38,6 +40,10 @@ Affogato.Forest = (function () {
 
   function cfg() {
     return Affogato.Config.scenes.forest;
+  }
+
+  function newsCfg() {
+    return cfg().news || {};
   }
 
   var clamp01 = Affogato.Utils.clamp01;
@@ -75,7 +81,7 @@ Affogato.Forest = (function () {
   }
 
   // Снимок текущего состояния главного канваса (#stage). Размер подгоняется
-  // под forest-overlay, чтобы drawImage в renderProgress работал 1:1.
+  // под forest-overlay, чтобы drawImage в drawCanvas работал 1:1.
   function captureMainSnapshot() {
     var stageCanvas = document.getElementById('stage');
     if (!stageCanvas || !canvasEl.width || !canvasEl.height) {
@@ -100,7 +106,9 @@ Affogato.Forest = (function () {
     }
   }
 
-  function renderProgress(p) {
+  // Рисует ТОЛЬКО canvas (кадр леса + бесшовный снимок #stage). Текстовые
+  // обрывки — отдельно, в updateFragments.
+  function drawCanvas(p) {
     if (!frames || !frames.length) return;
     var c = cfg();
     var s = c.startSpeed != null ? c.startSpeed : 0.4;
@@ -133,16 +141,56 @@ Affogato.Forest = (function () {
         ctx.restore();
       }
     }
-
-    // Подложка под текст «о проекте» и сам контент: начинают проявляться
-    // уже на последних кадрах descent, синхронно с приближением хижины.
-    // При скраббинге назад так же плавно гаснут.
-    var overlayOpacity = clamp01((p - PANEL_FADE_START) / (1 - PANEL_FADE_START)).toFixed(3);
-    if (panelEl) panelEl.style.opacity = overlayOpacity;
-    if (contentEl) contentEl.style.opacity = overlayOpacity;
   }
 
-  // ─────────────────────────────────── loading ──
+  // ───────────────────────────────── обрывки текста ──
+
+  // Позиции/прозрачность обрывков как функция от progress (единый столбец):
+  //  • opacity — «колокол» вокруг своей полосы band (виден на своей полосе);
+  //  • --py — вертикальный дрейф: пока блок «впереди» по пути (progress > band)
+  //    он чуть ниже центра; на своей полосе — в центре; когда пройден
+  //    (progress < band) — уходит вверх. На возврате (scroll-up, progress
+  //    убывает) это читается как: текущий блок в центре, предыдущие — вверх
+  //    и в прозрачность, следующий поднимается снизу.
+  function updateFragments() {
+    if (!items.length) return;
+    var n = newsCfg();
+    var half0 = n.bandHalfWidth != null ? n.bandHalfWidth : 0.13;
+    var driftPx = n.driftPx != null ? n.driftPx : 340;
+    var maxDrift = n.maxDriftPx != null ? n.maxDriftPx : 120;
+    var dScale = (isMobile() && n.mobileScale != null) ? n.mobileScale : 1;
+
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      var half = it.bandw || half0;
+      var delta = progress - it.band;         // >0 — впереди (ниже), <0 — пройден (выше)
+      var t = half > 0 ? clamp01(1 - Math.abs(delta) / half) : 0;
+      var op = t * t * (3 - 2 * t);           // smoothstep-колокол вокруг band
+      var y = delta * driftPx * dScale;
+      if (y > maxDrift) y = maxDrift; else if (y < -maxDrift) y = -maxDrift;
+      var el = it.el;
+      el.style.setProperty('--py', y.toFixed(1) + 'px');
+      el.style.opacity = op.toFixed(3);
+    }
+  }
+
+  function hideAllFragments() {
+    for (var i = 0; i < items.length; i++) {
+      var el = items[i].el;
+      el.style.opacity = '0';
+      el.style.setProperty('--py', '0px');
+    }
+  }
+
+  // Единая отрисовка кадра: canvas + обрывки. Зовётся анимацией, скраббингом
+  // и при ресайзе — всё чисто от progress, без отдельного rAF-цикла.
+  function render(p) {
+    progress = p;
+    drawCanvas(p);
+    updateFragments();
+  }
+
+  // ─────────────────────────────────────── loading ──
 
   function framePath(n) {
     var f = cfg().frames;
@@ -201,8 +249,7 @@ Affogato.Forest = (function () {
       var p = (now - animStart) / animDuration;
       if (p >= 1) p = 1;
       var k = easeInOutCubic(p);
-      progress = animFrom + (animTo - animFrom) * k;
-      renderProgress(progress);
+      render(animFrom + (animTo - animFrom) * k);
       if (p < 1) {
         raf = requestAnimationFrame(tick);
       } else {
@@ -240,22 +287,18 @@ Affogato.Forest = (function () {
       if (Affogato.TitleOverlay && Affogato.TitleOverlay.hide) {
         Affogato.TitleOverlay.hide();
       }
-      progress = 0;
       // renderProgress(0) рисует forest_0001 и поверх — снимок #stage с
       // альфой ≈ 1: канвас выглядит как точная копия main-сцены. is-visible
       // включает CSS opacity-фейд, но визуально нет «cut» — под канвасом
       // те же пиксели.
-      renderProgress(0);
-      shellEl.classList.remove('is-open');
+      render(0);
       canvasEl.classList.add('is-visible');
 
       startAnim(0, 1, cfg().descentSec || 1.2, function () {
         mode = 'open';
-        progress = 1;
-        renderProgress(1);
-        shellEl.classList.add('is-open');
-        // Кнопка «обратно» появляется только сейчас — синхронно с заглушкой,
-        // а не с самого старта погружения.
+        render(1);
+        // Кнопка «обратно» появляется только сейчас — когда долетели до места
+        // и можно начинать скроллить столбец на возврате.
         document.body.classList.add('forest-content-open');
         returnScrollDebt = 0;
         lastReturnScrollAt = 0;
@@ -272,9 +315,8 @@ Affogato.Forest = (function () {
       raf = null;
     }
     mode = 'ascending';
-    shellEl.classList.remove('is-open');
     // Кнопку «обратно» уводим сразу через снятие класса — CSS transition
-    // на .return-hint--forest = 0.35s, что синхронно с заглушкой (0.5s).
+    // на .return-hint--forest = 0.35s.
     document.body.classList.remove('forest-content-open');
     returnScrollDebt = 0;
     lastReturnScrollAt = 0;
@@ -285,8 +327,7 @@ Affogato.Forest = (function () {
     // анимации и оставит idle-хвост.
     var dur = Math.max(0.12, startProgress * fullDur);
 
-    progress = startProgress;
-    renderProgress(progress);
+    render(startProgress);
 
     startAnim(startProgress, 0, dur, function () {
       // Снимаем класс in-forest-mode и одновременно reset() титров —
@@ -298,6 +339,7 @@ Affogato.Forest = (function () {
       }
       document.body.classList.remove('in-forest-mode');
       canvasEl.classList.remove('is-visible');
+      hideAllFragments();
       Affogato.SmoothScroll.unlock();
       mode = 'closed';
       progress = 0;
@@ -310,14 +352,7 @@ Affogato.Forest = (function () {
     // amount > 0 — wheel вниз (углубляемся в кадры, прогресс растёт)
     // amount < 0 — wheel вверх (выходим обратно, прогресс падает)
     var delta = amount / SCRUB_PX_PER_PROGRESS;
-    progress = clamp01(progress + delta);
-    renderProgress(progress);
-    // Заглушка «о проекте» видна только на финальном кадре. Любой скраббинг
-    // её прячет; если юзер вернётся ровно на progress=1 — снова появится.
-    if (mode === 'open' && shellEl) {
-      if (progress >= 1) shellEl.classList.add('is-open');
-      else shellEl.classList.remove('is-open');
-    }
+    render(clamp01(progress + delta));
   }
 
   // Накопление scroll-up debt: повторяет логику player.collectReturnScroll
@@ -375,6 +410,20 @@ Affogato.Forest = (function () {
 
   // ────────────────────────────── init ──
 
+  function collectItems() {
+    items = [];
+    if (!shellEl) return;
+    var nodes = shellEl.querySelectorAll('.forest-news__item');
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      var band = parseFloat(el.getAttribute('data-band'));
+      if (isNaN(band)) band = 0.5;
+      var bandwRaw = el.getAttribute('data-bandw');
+      var bandw = bandwRaw != null ? parseFloat(bandwRaw) : 0;
+      items.push({ el: el, band: band, bandw: bandw });
+    }
+  }
+
   function bindEvents() {
     triggerEl.addEventListener('click', function (e) {
       e.preventDefault();
@@ -392,17 +441,17 @@ Affogato.Forest = (function () {
     triggerEl = document.getElementById('forest-trigger');
     returnEl = document.getElementById('forest-return');
     shellEl = document.getElementById('forest-shell');
-    panelEl = shellEl ? shellEl.querySelector('.forest-shell__panel') : null;
-    contentEl = shellEl ? shellEl.querySelector('.forest-shell__content') : null;
     canvasEl = document.getElementById('forest-overlay');
     loadingEl = document.getElementById('forest-loading');
     if (!triggerEl || !canvasEl) return;
+
+    collectItems();
 
     ctx = canvasEl.getContext('2d');
     applyCanvasSize();
     Affogato.Viewport.onChange(function () {
       applyCanvasSize();
-      if (mode !== 'closed') renderProgress(progress);
+      if (mode !== 'closed') render(progress);
     });
 
     bindEvents();

@@ -75,15 +75,31 @@
   <canvas id="transit-overlay" class="transit-overlay" aria-hidden="true"></canvas>
 
   <canvas id="forest-overlay" class="forest-overlay" aria-hidden="true"></canvas>
-  <div id="forest-shell" class="forest-shell">
-    <div class="forest-shell__panel" aria-hidden="true"></div>
-    <div class="forest-shell__content">
-      <h2 class="forest-shell__title">АФФОГАТО</h2>
-      <p class="forest-shell__text">Музыкальный проект Мильченко Дениса в&nbsp;стиле тёмного неофолка, выросший из&nbsp;старых тетрадей и&nbsp;долгих пауз.</p>
-      <p class="forest-shell__text">Нажав на&nbsp;&laquo;послушать&raquo;, откроется плеер со&nbsp;всеми песнями альбома &laquo;После падения&raquo;.</p>
-      <p class="forest-shell__text">Нажав на&nbsp;&laquo;написать&raquo;, можно полюбоваться видом сверху и&nbsp;отправить сообщение на&nbsp;почту (но&nbsp;это необязательно).</p>
-      <p class="forest-shell__text">А&nbsp;если спуститься под воду (с&nbsp;помощью скролла или нажав на&nbsp;кнопку &laquo;погрузиться&raquo;), то&nbsp;можно посмотреть обложки песен и&nbsp;почитать про каждую песню отдельно. В&nbsp;самом&nbsp;же конце ожидает небольшая пасхалка.</p>
-      <p class="forest-shell__text">Сам проект родился с&nbsp;расцветом нейросетей, умеющих создавать музыку, когда появилась возможность дать вторую жизнь песням, некоторым из&nbsp;которых уже более двадцати лет.</p>
+  <!-- «О проекте» одним центральным столбцом: каждый обрывок привязан к своей
+       полосе прогресса (data-band) и показывается по мере прохождения пути
+       скроллом — всплывает в центр, пройденные уходят вверх и в прозрачность.
+       Вертикальный сдвиг и opacity пишет forest.js (updateFragments). -->
+  <div id="forest-shell" class="forest-news" aria-label="О проекте">
+    <div class="forest-news__item forest-news__item--masthead" data-band="0.96">
+      <span class="forest-news__kicker">музыкальный проект Мильченко Дениса</span>
+      <h2 class="forest-news__masthead">АФФОГАТО</h2>
+      <span class="forest-news__dateline">в&nbsp;стиле тёмного неофолка</span>
+    </div>
+    <div class="forest-news__item" data-band="0.74">
+      <span class="forest-news__kicker">послушать</span>
+      <p class="forest-news__text">Нажав на&nbsp;&laquo;послушать&raquo;, откроется плеер со&nbsp;всеми песнями альбома &laquo;После падения&raquo;.</p>
+    </div>
+    <div class="forest-news__item" data-band="0.56">
+      <span class="forest-news__kicker">написать</span>
+      <p class="forest-news__text">Нажав на&nbsp;&laquo;написать&raquo;, можно полюбоваться видом сверху и&nbsp;отправить сообщение на&nbsp;почту (но&nbsp;это необязательно).</p>
+    </div>
+    <div class="forest-news__item" data-band="0.40">
+      <span class="forest-news__kicker">под водой</span>
+      <p class="forest-news__text">А&nbsp;если спуститься под воду (с&nbsp;помощью скролла или нажав на&nbsp;кнопку &laquo;погрузиться&raquo;), то&nbsp;можно посмотреть обложки песен и&nbsp;почитать про каждую песню отдельно. В&nbsp;самом&nbsp;же конце ожидает небольшая пасхалка.</p>
+    </div>
+    <div class="forest-news__item" data-band="0.25">
+      <span class="forest-news__kicker">как родилось</span>
+      <p class="forest-news__text">Сам проект родился с&nbsp;расцветом нейросетей, умеющих создавать музыку, когда появилась возможность дать вторую жизнь песням, некоторым из&nbsp;которых уже более двадцати лет.</p>
     </div>
   </div>
   <button id="forest-return" class="return-hint return-hint--forest" type="button" aria-label="Вернуться">
