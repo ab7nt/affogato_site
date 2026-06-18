@@ -29,8 +29,6 @@ Affogato.Sky = (function () {
   var progress = 0;
   var animFrom = 0, animTo = 0, animStart = 0, animDuration = 0;
   var raf = null;
-  var returnScrollDebt = 0;
-  var lastReturnScrollAt = 0;
   var touchLastY = 0;
 
   // Offscreen-снимок #stage в момент клика «написать». Накладывается поверх
@@ -276,8 +274,6 @@ Affogato.Sky = (function () {
         // renderProgress(1) → updatePieces соберёт форму и поставит is-open.
         renderProgress(1);
         document.body.classList.add('sky-content-open');
-        returnScrollDebt = 0;
-        lastReturnScrollAt = 0;
       });
     });
   }
@@ -293,8 +289,6 @@ Affogato.Sky = (function () {
     mode = 'ascending';
     shellEl.classList.remove('is-open');
     document.body.classList.remove('sky-content-open');
-    returnScrollDebt = 0;
-    lastReturnScrollAt = 0;
 
     var fullDur = cfg().ascentSec || 1.2;
     var dur = Math.max(0.12, startProgress * fullDur);
@@ -319,30 +313,29 @@ Affogato.Sky = (function () {
 
   // ──────────────── scroll-out из «написать» ──
 
-  function applyScrub(amount) {
-    var delta = amount / SCRUB_PX_PER_PROGRESS;
-    progress = clamp01(progress + delta);
-    renderProgress(progress); // updatePieces сам обновит is-open по openAt
+  // Индекс кадра для прогресса (та же привязка, что в renderProgress).
+  function frameIndexAt(p) {
+    if (!frames || !frames.length) return 0;
+    var c = cfg();
+    var s = c.startSpeed != null ? c.startSpeed : 0.4;
+    var eased = s * p + (1 - s) * p * p;
+    var idx = Math.round(eased * (frames.length - 1));
+    if (idx < 0) idx = 0;
+    if (idx > frames.length - 1) idx = frames.length - 1;
+    return idx;
   }
 
-  function collectReturnScroll(amount) {
-    if (mode !== 'open') return;
-    var now = performance.now();
-    if (!lastReturnScrollAt || now - lastReturnScrollAt > 850) {
-      returnScrollDebt = 0;
-    }
-    lastReturnScrollAt = now;
-
-    if (amount <= 0) {
-      returnScrollDebt = Math.max(0, returnScrollDebt + amount * 0.7);
-      return;
-    }
-
-    returnScrollDebt += amount;
-    var threshold = cfg().returnScrollThreshold || 900;
-    if (returnScrollDebt >= threshold) {
-      returnScrollDebt = 0;
-      close({ startProgress: progress });
+  // Возврат полностью ручной. Единственная автоматика: при достижении на
+  // возврате (scroll-up) последних N кадров секвенции — доигрываем их сами,
+  // чтобы не зависнуть в пустом небе у самого выхода. Сборка (scroll-down)
+  // ничего не дёргает.
+  function applyScrub(amount) {
+    var next = clamp01(progress + amount / SCRUB_PX_PER_PROGRESS);
+    progress = next;
+    renderProgress(progress); // updatePieces сам обновит is-open по openAt
+    if (amount < 0) {
+      var tail = cfg().autoExitFrames != null ? cfg().autoExitFrames : 5;
+      if (frameIndexAt(next) <= tail) close({ startProgress: next });
     }
   }
 
@@ -369,7 +362,6 @@ Affogato.Sky = (function () {
     if (isScrollableTarget(e.target, e.deltaY)) return;
     e.preventDefault();
     applyScrub(e.deltaY);
-    collectReturnScroll(-e.deltaY);
   }
 
   function onTouchStart(e) {
@@ -386,7 +378,6 @@ Affogato.Sky = (function () {
     if (isScrollableTarget(e.target, -dy)) return;
     if (e.cancelable) e.preventDefault();
     applyScrub(-dy * 2.2);
-    collectReturnScroll(dy * 2.2);
   }
 
   // ─────────────────────────── форма ──

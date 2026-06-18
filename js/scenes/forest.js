@@ -16,8 +16,6 @@ Affogato.Forest = (function () {
   var progress = 0;    // 0..1 — позиция в секвенции кадров
   var animFrom = 0, animTo = 0, animStart = 0, animDuration = 0;
   var raf = null;
-  var returnScrollDebt = 0;
-  var lastReturnScrollAt = 0;
   var touchLastY = 0;
 
   // Обрывки текста: заполняется в init() из .forest-news__item.
@@ -300,8 +298,6 @@ Affogato.Forest = (function () {
         // Кнопка «обратно» появляется только сейчас — когда долетели до места
         // и можно начинать скроллить столбец на возврате.
         document.body.classList.add('forest-content-open');
-        returnScrollDebt = 0;
-        lastReturnScrollAt = 0;
       });
     });
   }
@@ -318,8 +314,6 @@ Affogato.Forest = (function () {
     // Кнопку «обратно» уводим сразу через снятие класса — CSS transition
     // на .return-hint--forest = 0.35s.
     document.body.classList.remove('forest-content-open');
-    returnScrollDebt = 0;
-    lastReturnScrollAt = 0;
 
     var fullDur = cfg().ascentSec || 1.2;
     // Длительность пропорциональна оставшейся доле — как player.closePlayer
@@ -348,36 +342,30 @@ Affogato.Forest = (function () {
 
   // ──────────────── scroll-out из «о проекте» ──
 
+  // Индекс кадра для прогресса (та же привязка, что в drawCanvas).
+  function frameIndexAt(p) {
+    if (!frames || !frames.length) return 0;
+    var c = cfg();
+    var s = c.startSpeed != null ? c.startSpeed : 0.4;
+    var eased = s * p + (1 - s) * p * p;
+    var idx = Math.round(eased * (frames.length - 1));
+    if (idx < 0) idx = 0;
+    if (idx > frames.length - 1) idx = frames.length - 1;
+    return idx;
+  }
+
+  // Возврат полностью ручной. Единственная автоматика: при достижении на
+  // возврате (scroll-up) последних N кадров секвенции — доигрываем их сами,
+  // чтобы не зависнуть в пустом лесу у самого выхода. Вглубь (scroll-down)
+  // ничего не дёргаем.
   function applyScrub(amount) {
     // amount > 0 — wheel вниз (углубляемся в кадры, прогресс растёт)
     // amount < 0 — wheel вверх (выходим обратно, прогресс падает)
-    var delta = amount / SCRUB_PX_PER_PROGRESS;
-    render(clamp01(progress + delta));
-  }
-
-  // Накопление scroll-up debt: повторяет логику player.collectReturnScroll
-  // (js/player.js:361-392), но без отдельного preview-эффекта — кадровый
-  // скраббинг прогресса сам служит «превью» возврата.
-  function collectReturnScroll(amount) {
-    if (mode !== 'open') return;
-    var now = performance.now();
-    if (!lastReturnScrollAt || now - lastReturnScrollAt > 850) {
-      returnScrollDebt = 0;
-    }
-    lastReturnScrollAt = now;
-
-    if (amount <= 0) {
-      // wheel вниз — мы идём вперёд по кадрам, debt снимается медленнее
-      // (как в плеере), не сбрасывается резко.
-      returnScrollDebt = Math.max(0, returnScrollDebt + amount * 0.7);
-      return;
-    }
-
-    returnScrollDebt += amount;
-    var threshold = cfg().returnScrollThreshold || 900;
-    if (returnScrollDebt >= threshold) {
-      returnScrollDebt = 0;
-      close({ startProgress: progress });
+    var next = clamp01(progress + amount / SCRUB_PX_PER_PROGRESS);
+    render(next);
+    if (amount < 0) {
+      var tail = cfg().autoExitFrames != null ? cfg().autoExitFrames : 5;
+      if (frameIndexAt(next) <= tail) close({ startProgress: next });
     }
   }
 
@@ -385,9 +373,6 @@ Affogato.Forest = (function () {
     if (mode !== 'open') return;
     e.preventDefault();
     applyScrub(e.deltaY);
-    // scroll-up (deltaY < 0) — копим debt; scroll-down — гасим (через amount<=0
-    // ветку collectReturnScroll).
-    collectReturnScroll(-e.deltaY);
   }
 
   function onTouchStart(e) {
@@ -405,7 +390,6 @@ Affogato.Forest = (function () {
     // dy > 0 — палец вниз (обычно соответствует scroll-up страницы).
     // Конвертируем в delta-эквивалент wheel: amount = -dy * factor.
     applyScrub(-dy * 2.2);
-    collectReturnScroll(dy * 2.2);
   }
 
   // ────────────────────────────── init ──
