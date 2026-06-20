@@ -11,3 +11,6 @@ Thumbs.db
 # Парковочные страницы хостинга (reg.ru)
 /assets/index.html
 /js/index.html
+
+# Креды деплоя (локально, не в репозиторий)
+.deploy.env
